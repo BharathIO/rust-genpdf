@@ -15,13 +15,7 @@
 
 use std::env;
 
-use genpdf::{elements, fonts};
-
-const FONT_DIRS: &[&str] = &[
-    "/usr/share/fonts/liberation",
-    "/usr/share/fonts/truetype/liberation",
-];
-const DEFAULT_FONT_NAME: &'static str = "LiberationSans";
+use genpdf::elements;
 
 fn main() {
     let args: Vec<_> = env::args().skip(1).collect();
@@ -30,16 +24,7 @@ fn main() {
     }
     let output_file = &args[0];
 
-    let font_dir = FONT_DIRS
-        .iter()
-        .filter(|path| std::path::Path::new(path).exists())
-        .next()
-        .expect("Could not find font directory");
-    let default_font =
-        fonts::from_files(font_dir, DEFAULT_FONT_NAME, Some(fonts::Builtin::Helvetica))
-            .expect("Failed to load the default font family");
-
-    let mut doc = genpdf::Document::new(default_font);
+    let mut doc = genpdf::Document::new();
     doc.set_title("genpdf Demo Document");
     doc.set_minimal_conformance();
     doc.set_line_spacing(1.25);
