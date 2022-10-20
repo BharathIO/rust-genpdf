@@ -578,10 +578,8 @@ pub struct Document {
 const FONT_DIRS: &[&str] = &["assets/fonts/"];
 
 const DEFAULT_FONT_NAME: &'static str = "LiberationSans";
-// const MONO_FONT_NAME: &'static str = "LiberationMono";
-
 impl Document {
-    /// Creates a new document with the given default font family.
+    /// Creates a new document with the default font family.
     pub fn new() -> Document {
         let font_dir = FONT_DIRS
             .iter()
