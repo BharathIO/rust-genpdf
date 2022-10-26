@@ -1,13 +1,7 @@
 // SPDX-FileCopyrightText: 2021 Robin Krahl <robin.krahl@ireas.org>
 // SPDX-License-Identifier: CC0-1.0
 
-use genpdf::{elements, fonts, style, Element as _};
-
-const FONT_DIRS: &[&str] = &[
-    "/usr/share/fonts/liberation",
-    "/usr/share/fonts/truetype/liberation",
-];
-const DEFAULT_FONT_NAME: &'static str = "LiberationSans";
+use genpdf::{elements, style, Element as _};
 
 const LOREM_IPSUM: &'static str =
     "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut \
@@ -19,16 +13,7 @@ const LOREM_IPSUM: &'static str =
 /// Creates a new document with the default font, minimal conformance and constant creation and
 /// modification dates.
 fn get_document() -> genpdf::Document {
-    let font_dir = FONT_DIRS
-        .iter()
-        .filter(|path| std::path::Path::new(path).exists())
-        .next()
-        .expect("Could not find font directory");
-    let default_font =
-        fonts::from_files(font_dir, DEFAULT_FONT_NAME, Some(fonts::Builtin::Helvetica))
-            .expect("Failed to load the default font family");
-
-    let mut doc = genpdf::Document::new(default_font);
+    let mut doc = genpdf::Document::new();
     doc.set_minimal_conformance();
     doc.set_creation_date(printpdf::OffsetDateTime::unix_epoch());
     doc.set_modification_date(printpdf::OffsetDateTime::unix_epoch());

@@ -575,10 +575,21 @@ pub struct Document {
     modification_date: Option<printpdf::OffsetDateTime>,
 }
 
+const FONT_DIRS: &[&str] = &["assets/fonts/"];
+
+const DEFAULT_FONT_NAME: &'static str = "LiberationSans";
 impl Document {
-    /// Creates a new document with the given default font family.
-    pub fn new(default_font_family: fonts::FontFamily<fonts::FontData>) -> Document {
-        let font_cache = fonts::FontCache::new(default_font_family);
+    /// Creates a new document with the default font family.
+    pub fn new() -> Document {
+        let font_dir = FONT_DIRS
+            .iter()
+            .filter(|path| std::path::Path::new(path).exists())
+            .next()
+            .expect("Could not find font directory");
+        let default_font = fonts::from_files(font_dir, DEFAULT_FONT_NAME, None)
+            .expect("Failed to load the default font family");
+
+        let font_cache = fonts::FontCache::new(default_font);
         Document {
             root: elements::LinearLayout::vertical(),
             title: String::new(),
