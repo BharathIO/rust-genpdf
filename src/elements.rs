@@ -1413,11 +1413,6 @@ impl TableLayout {
         }
     }
 
-    /// Get the number of columns in this table.
-    pub fn get_column_weights(&self) -> &Vec<usize> {
-        &self.column_weights
-    }
-
     /// Sets the cell decorator for this table.
     pub fn set_cell_decorator(&mut self, decorator: impl CellDecorator + 'static) {
         self.cell_decorator = Some(Box::from(decorator));

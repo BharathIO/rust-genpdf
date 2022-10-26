@@ -17,8 +17,14 @@ use std::env;
 
 use genpdf::Alignment;
 use genpdf::Element as _;
-use genpdf::{elements, style};
+use genpdf::{elements, fonts, style};
 
+const FONT_DIRS: &[&str] = &[
+    "/usr/share/fonts/liberation",
+    "/usr/share/fonts/truetype/liberation",
+];
+const DEFAULT_FONT_NAME: &'static str = "LiberationSans";
+const MONO_FONT_NAME: &'static str = "LiberationMono";
 const LOREM_IPSUM: &'static str =
     "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut \
     labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco \
@@ -33,7 +39,18 @@ fn main() {
     }
     let output_file = &args[0];
 
-    let mut doc = genpdf::Document::new();
+    let font_dir = FONT_DIRS
+        .iter()
+        .filter(|path| std::path::Path::new(path).exists())
+        .next()
+        .expect("Could not find font directory");
+    let default_font =
+        fonts::from_files(font_dir, DEFAULT_FONT_NAME, Some(fonts::Builtin::Helvetica))
+            .expect("Failed to load the default font family");
+    let monospace_font = fonts::from_files(font_dir, MONO_FONT_NAME, Some(fonts::Builtin::Courier))
+        .expect("Failed to load the monospace font family");
+
+    let mut doc = genpdf::Document::new(default_font);
     doc.set_title("genpdf Demo Document");
     doc.set_minimal_conformance();
     doc.set_line_spacing(1.25);
@@ -62,8 +79,8 @@ fn main() {
         );
     }
 
-    // let monospace = doc.add_font_family(monospace_font);
-    let code = style::Style::new().bold();
+    let monospace = doc.add_font_family(monospace_font);
+    let code = style::Style::from(monospace).bold();
     let red = style::Color::Rgb(255, 0, 0);
     let blue = style::Color::Rgb(0, 0, 255);
 
@@ -173,9 +190,9 @@ fn main() {
             .framed(style::LineStyle::from(style::Color::Rgb(0, 0, 255)).with_thickness(0.3))
             .styled(red),
     );
-    // doc.push(
-    //     elements::Paragraph::new("You can also use other fonts if you want to.").styled(monospace),
-    // );
+    doc.push(
+        elements::Paragraph::new("You can also use other fonts if you want to.").styled(monospace),
+    );
     doc.push(
         elements::Paragraph::default()
             .string("You can also ")
