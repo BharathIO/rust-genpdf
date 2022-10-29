@@ -14,16 +14,17 @@
 //! [here](https://genpdf-rs.ireas.org/examples/demo.pdf).
 
 use std::env;
+use std::path::PathBuf;
 
+use genpdf::error::Error;
+use genpdf::fonts::from_files;
+use genpdf::fonts::FontData;
+use genpdf::fonts::FontFamily;
 use genpdf::Alignment;
 use genpdf::Element as _;
-use genpdf::{elements, fonts, style};
+use genpdf::{elements, style};
 
-const FONT_DIRS: &[&str] = &[
-    "/usr/share/fonts/liberation",
-    "/usr/share/fonts/truetype/liberation",
-];
-const DEFAULT_FONT_NAME: &'static str = "LiberationSans";
+// const DEFAULT_FONT_NAME: &'static str = "LiberationSans";
 const MONO_FONT_NAME: &'static str = "LiberationMono";
 const LOREM_IPSUM: &'static str =
     "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut \
@@ -32,6 +33,34 @@ const LOREM_IPSUM: &'static str =
     voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat \
     non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
 
+fn get_default_font_dir() -> PathBuf {
+    let mut font_dir = PathBuf::new();
+    let dir = env::current_dir().ok();
+    if let Some(dir) = dir {
+        font_dir = dir.join("assets/fonts/Liberation/");
+    }
+    font_dir
+}
+
+const DEFAULT_FONT_NAME: &str = "LiberationSans";
+pub fn get_default_font() -> Result<FontFamily<FontData>, Error> {
+    get_font(DEFAULT_FONT_NAME)
+}
+
+pub fn get_font(font_name: &str) -> Result<FontFamily<FontData>, Error> {
+    let font_dir = get_default_font_dir();
+    println!("Font dir: {}", font_dir.display());
+    let font = match from_files(font_dir, font_name, None) {
+        Ok(f) => f,
+        Err(e) => {
+            let err = format!("Failed to load font: {}", e);
+            println!("{}", err);
+            return Err(e);
+        }
+    };
+    Ok(font)
+}
+
 fn main() {
     let args: Vec<_> = env::args().skip(1).collect();
     if args.len() != 1 {
@@ -39,17 +68,26 @@ fn main() {
     }
     let output_file = &args[0];
 
-    let font_dir = FONT_DIRS
-        .iter()
-        .filter(|path| std::path::Path::new(path).exists())
-        .next()
-        .expect("Could not find font directory");
-    let default_font =
-        fonts::from_files(font_dir, DEFAULT_FONT_NAME, Some(fonts::Builtin::Helvetica))
-            .expect("Failed to load the default font family");
-    let monospace_font = fonts::from_files(font_dir, MONO_FONT_NAME, Some(fonts::Builtin::Courier))
-        .expect("Failed to load the monospace font family");
+    let default_font = match get_default_font() {
+        Ok(f) => f,
+        Err(e) => {
+            let err = format!("Failed to load default font: {}", e);
+            println!("{}", err);
+            return;
+        }
+    };
 
+    let monospace_font = match get_font(MONO_FONT_NAME) {
+        Ok(f) => f,
+        Err(e) => {
+            let err = format!("Failed to load mono font: {}", e);
+            println!("{}", err);
+            return;
+        }
+    };
+
+    // let monospace_font = fonts::from_files(font_dir, MONO_FONT_NAME, Some(fonts::Builtin::Courier))
+    //     .expect("Failed to load the monospace font family");
     let mut doc = genpdf::Document::new(default_font);
     doc.set_title("genpdf Demo Document");
     doc.set_minimal_conformance();
@@ -57,16 +95,7 @@ fn main() {
 
     let mut decorator = genpdf::SimplePageDecorator::new();
     decorator.set_margins(10);
-    decorator.set_header(|page| {
-        let mut layout = elements::LinearLayout::vertical();
-        if page > 1 {
-            layout.push(
-                elements::Paragraph::new(format!("Page {}", page)).aligned(Alignment::Center),
-            );
-            layout.push(elements::Break::new(1));
-        }
-        layout.styled(style::Style::new().with_font_size(10))
-    });
+    decorator.set_header(|page| get_header_widget(page));
     doc.set_page_decorator(decorator);
 
     #[cfg(feature = "hyphenation")]
@@ -298,6 +327,14 @@ fn main() {
 
     doc.render_to_file(output_file)
         .expect("Failed to write output file");
+}
+
+fn get_header_widget(page: usize) -> elements::StyledElement<elements::LinearLayout> {
+    println!("Rendering header for page {}", page);
+    let mut layout = elements::LinearLayout::vertical();
+    layout.push(elements::Paragraph::new("Page #{page}").aligned(Alignment::Center));
+    layout.push(elements::Break::new(1));
+    layout.styled(style::Style::new().with_font_size(10))
 }
 
 // Only import the images if the feature is enabled. This helps verify our handling of feature toggles.

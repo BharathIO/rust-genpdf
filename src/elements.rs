@@ -201,6 +201,7 @@ impl Element for Text {
             Position::default(),
             style,
             &self.text.s,
+            context,
         )? {
             result.size = Size::new(
                 style.str_width(&context.font_cache, &self.text.s),
@@ -354,7 +355,7 @@ impl Element for Paragraph {
 
             if let Some(mut section) = area.text_section(&context.font_cache, position, metrics) {
                 for s in line {
-                    section.print_str(&s.s, s.style)?;
+                    section.print_str(&s.s, s.style, context)?;
                     rendered_len += s.s.len();
                 }
                 rendered_len -= delta;
@@ -1028,6 +1029,7 @@ impl<E: Element> Element for BulletPoint<E> {
                 Position::new(self.indent - bullet_width - self.bullet_space, 0),
                 style,
                 self.bullet.as_str(),
+                context,
             )?;
             self.bullet_rendered = true;
         }

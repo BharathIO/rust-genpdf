@@ -26,6 +26,7 @@ use std::rc;
 use crate::error::{Context as _, Error, ErrorKind};
 use crate::fonts;
 use crate::style::{Color, LineStyle, Style};
+use crate::Context;
 use crate::{Margins, Mm, Position, Size};
 
 #[cfg(feature = "images")]
@@ -600,11 +601,12 @@ impl<'p> Area<'p> {
         position: Position,
         style: Style,
         s: S,
+        context: &Context,
     ) -> Result<bool, Error> {
         if let Some(mut section) =
             self.text_section(font_cache, position, style.metrics(font_cache))
         {
-            section.print_str(s, style)?;
+            section.print_str(s, style, context)?;
             Ok(true)
         } else {
             Ok(false)
@@ -700,10 +702,20 @@ impl<'f, 'p> TextSection<'f, 'p> {
     /// Prints the given string with the given style.
     ///
     /// The font cache for this text section must contain the PDF font for the given style.
-    pub fn print_str(&mut self, s: impl AsRef<str>, style: Style) -> Result<(), Error> {
+    pub fn print_str(
+        &mut self,
+        s: impl AsRef<str>,
+        style: Style,
+        context: &Context,
+    ) -> Result<(), Error> {
+        let page_number = context.page_number;
+        let from = &"#{page}";
+        let binding = s.as_ref().replace(from, &page_number.to_string());
+        let s = match s.as_ref().contains(from) {
+            true => binding.as_str(),
+            false => s.as_ref(),
+        };
         let font = style.font(self.font_cache);
-        let s = s.as_ref();
-
         // Adjust cursor to remove left bearing of the first character of the first string
         if self.is_first {
             let x_offset = if let Some(first_c) = s.chars().next() {
