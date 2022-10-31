@@ -573,6 +573,7 @@ pub struct Document {
     conformance: Option<printpdf::PdfConformance>,
     creation_date: Option<printpdf::OffsetDateTime>,
     modification_date: Option<printpdf::OffsetDateTime>,
+    margins: Option<Margins>,
 }
 
 impl Document {
@@ -589,6 +590,7 @@ impl Document {
             conformance: None,
             creation_date: None,
             modification_date: None,
+            margins: None,
         }
     }
 
@@ -664,6 +666,21 @@ impl Document {
     /// [`SimplePageDecorator`]: struct.SimplePageDecorator.html
     pub fn set_page_decorator<D: PageDecorator + 'static>(&mut self, decorator: D) {
         self.decorator = Some(Box::new(decorator));
+    }
+
+    /// margin
+    pub fn set_margins(&mut self, top: f64, right: f64, bottom: f64, left: f64) {
+        self.margins = Some(Margins {
+            top: top.into(),
+            right: right.into(),
+            bottom: bottom.into(),
+            left: left.into(),
+        });
+    }
+
+    /// get_margins
+    pub fn get_margins(&self) -> Option<Margins> {
+        self.margins
     }
 
     /// Sets the PDF conformance settings for this document.
@@ -752,6 +769,7 @@ impl Document {
     /// For details on the rendering process, see the [Rendering Process section of the crate
     /// documentation](index.html#rendering-process).
     pub fn render_to_file(self, path: impl AsRef<path::Path>) -> Result<(), error::Error> {
+        println!("in rust-genpdf render_to_file");
         let path = path.as_ref();
         let file = fs::File::create(path)
             .with_context(|| format!("Could not create file {}", path.display()))?;
@@ -864,6 +882,7 @@ impl PageDecorator for SimplePageDecorator {
     ) -> Result<render::Area<'a>, error::Error> {
         self.page += 1;
         context.page_number = self.page;
+        println!("in rust-genpdf decorate_page, area.size: {:?}", area.size());
         if let Some(margins) = self.margins {
             area.add_margins(margins);
         }

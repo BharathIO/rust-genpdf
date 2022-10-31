@@ -708,13 +708,13 @@ impl<'f, 'p> TextSection<'f, 'p> {
         style: Style,
         context: &Context,
     ) -> Result<(), Error> {
-        let page_number = context.page_number;
-        let from = &"#{page}";
-        let binding = s.as_ref().replace(from, &page_number.to_string());
-        let s = match s.as_ref().contains(from) {
-            true => binding.as_str(),
-            false => s.as_ref(),
-        };
+        let exp = &"#{page}";
+        let mut s = s.as_ref().to_string();
+        if s.contains(exp) {
+            let page = context.page_number;
+            s = s.replace(exp, &page.to_string());
+        }
+        let s = s.as_str();
         let font = style.font(self.font_cache);
         // Adjust cursor to remove left bearing of the first character of the first string
         if self.is_first {

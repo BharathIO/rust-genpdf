@@ -95,7 +95,10 @@ fn main() {
 
     let mut decorator = genpdf::SimplePageDecorator::new();
     decorator.set_margins(10);
-    decorator.set_header(|page| get_header_widget(page));
+    decorator.set_header(|page| {
+        println!("Page: {}", page);
+        get_header_widget()
+    });
     doc.set_page_decorator(decorator);
 
     #[cfg(feature = "hyphenation")]
@@ -329,8 +332,7 @@ fn main() {
         .expect("Failed to write output file");
 }
 
-fn get_header_widget(page: usize) -> elements::StyledElement<elements::LinearLayout> {
-    println!("Rendering header for page {}", page);
+fn get_header_widget() -> elements::StyledElement<elements::LinearLayout> {
     let mut layout = elements::LinearLayout::vertical();
     layout.push(elements::Paragraph::new("Page #{page}").aligned(Alignment::Center));
     layout.push(elements::Break::new(1));

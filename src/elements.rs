@@ -50,6 +50,7 @@ use std::mem;
 use crate::error::{Error, ErrorKind};
 use crate::fonts;
 use crate::render;
+use crate::style;
 use crate::style::{LineStyle, Style, StyledString};
 use crate::wrap;
 use crate::{Alignment, Context, Element, Margins, Mm, Position, RenderResult, Size};
@@ -261,6 +262,7 @@ pub struct Paragraph {
     words: collections::VecDeque<StyledString>,
     style_applied: bool,
     alignment: Alignment,
+    style: style::Style,
 }
 
 impl Paragraph {
@@ -268,8 +270,19 @@ impl Paragraph {
     pub fn new(text: impl Into<StyledString>) -> Paragraph {
         Paragraph {
             text: vec![text.into()],
+            style: style::Style::new(),
             ..Default::default()
         }
+    }
+
+    /// set font size
+    pub fn set_font_size(&mut self, size: u8) {
+        self.style.set_font_size(size);
+    }
+
+    /// set font bold
+    pub fn set_bold(&mut self) {
+        self.style.set_bold();
     }
 
     /// Sets the alignment of this paragraph.
@@ -316,7 +329,8 @@ impl Paragraph {
     fn apply_style(&mut self, style: Style) {
         if !self.style_applied {
             for s in &mut self.text {
-                s.style = style.and(s.style);
+                // s.style = style.and(s.style);
+                s.style = style.and(self.style);
             }
             self.style_applied = true;
         }
@@ -363,6 +377,7 @@ impl Element for Paragraph {
                 result.has_more = true;
                 break;
             }
+            println!("metrics.line_height = {:?}", metrics.line_height);
             result.size = result
                 .size
                 .stack_vertical(Size::new(width, metrics.line_height));
