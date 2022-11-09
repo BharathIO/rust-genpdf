@@ -263,6 +263,8 @@ pub struct Paragraph {
     style_applied: bool,
     alignment: Alignment,
     style: style::Style,
+    borders: bool,
+    padding: i32,
 }
 
 impl Paragraph {
@@ -283,6 +285,27 @@ impl Paragraph {
     /// set font bold
     pub fn set_bold(&mut self) {
         self.style.set_bold();
+    }
+
+    /// set borders
+    pub fn set_borders(&mut self, borders: bool) {
+        self.borders = borders;
+    }
+
+    /// set padding
+    /// padding is the distance between the text and the border
+    pub fn set_padding(&mut self, padding: i32) {
+        self.padding = padding;
+    }
+
+    /// returns the current padding
+    pub fn get_padding(&self) -> i32 {
+        self.padding
+    }
+
+    /// has bordrs
+    pub fn has_borders(&self) -> bool {
+        self.borders
     }
 
     /// Sets the alignment of this paragraph.
@@ -344,6 +367,14 @@ impl Element for Paragraph {
         mut area: render::Area<'_>,
         style: Style,
     ) -> Result<RenderResult, Error> {
+        // let w = area.size().width.0;
+        // area.set_width((0.5 * w as f32).into()); // use 30% of the page width
+        // if self.borders {
+        //     self.borders = false;
+        //     let mut fe = self.clone().framed(LineStyle::new());
+        //     return fe.render(context, area, style);
+        // }
+
         let mut result = RenderResult::default();
 
         self.apply_style(style);
@@ -377,7 +408,7 @@ impl Element for Paragraph {
                 result.has_more = true;
                 break;
             }
-            println!("metrics.line_height = {:?}", metrics.line_height);
+            // println!("metrics.line_height = {:?}", metrics.line_height);
             result.size = result
                 .size
                 .stack_vertical(Size::new(width, metrics.line_height));
@@ -677,6 +708,9 @@ impl<E: Element> Element for FramedElement<E> {
         area: render::Area<'_>,
         style: Style,
     ) -> Result<RenderResult, Error> {
+        // if let Some(margins) = self.margins {
+        // area.add_margins(20);
+        // }
         // For the element area calculations, we have to take into account the full line thickness.
         // For the frame area, we only need half because we specify the center of the line.
         let line_thickness = self.line_style.thickness();
@@ -707,6 +741,7 @@ impl<E: Element> Element for FramedElement<E> {
         }
 
         // Draw the frame.
+
         let top_left = Position::default();
         let top_right = Position::new(frame_area.size().width, 0);
         let bottom_left = Position::new(0, frame_area.size().height);
@@ -1409,6 +1444,7 @@ impl<'a, E: IntoBoxedElement> iter::Extend<E> for TableLayoutRow<'a> {
 ///
 /// [`CellDecorator`]: trait.CellDecorator.html
 /// [`FrameCellDecorator`]: struct.FrameCellDecorator.html
+///
 pub struct TableLayout {
     column_weights: Vec<usize>,
     rows: Vec<Vec<Box<dyn Element>>>,
