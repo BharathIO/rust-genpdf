@@ -573,6 +573,7 @@ pub struct Document {
     conformance: Option<printpdf::PdfConformance>,
     creation_date: Option<printpdf::OffsetDateTime>,
     modification_date: Option<printpdf::OffsetDateTime>,
+    margins: Option<Margins>,
 }
 
 impl Document {
@@ -589,6 +590,7 @@ impl Document {
             conformance: None,
             creation_date: None,
             modification_date: None,
+            margins: None,
         }
     }
 
@@ -666,6 +668,21 @@ impl Document {
         self.decorator = Some(Box::new(decorator));
     }
 
+    /// margin
+    pub fn set_margins(&mut self, top: f64, right: f64, bottom: f64, left: f64) {
+        self.margins = Some(Margins {
+            top: top.into(),
+            right: right.into(),
+            bottom: bottom.into(),
+            left: left.into(),
+        });
+    }
+
+    /// get_margins
+    pub fn get_margins(&self) -> Option<Margins> {
+        self.margins
+    }
+
     /// Sets the PDF conformance settings for this document.
     pub fn set_conformance(&mut self, conformance: printpdf::PdfConformance) {
         self.conformance = Some(conformance);
@@ -727,7 +744,7 @@ impl Document {
         loop {
             let mut area = renderer.last_page().last_layer().area();
             if let Some(decorator) = &mut self.decorator {
-                area = decorator.decorate_page(&self.context, area, self.style)?;
+                area = decorator.decorate_page(&mut self.context, area, self.style)?;
             }
             let result = self.root.render(&self.context, area, self.style)?;
             if result.has_more {
@@ -752,6 +769,7 @@ impl Document {
     /// For details on the rendering process, see the [Rendering Process section of the crate
     /// documentation](index.html#rendering-process).
     pub fn render_to_file(self, path: impl AsRef<path::Path>) -> Result<(), error::Error> {
+        println!("in rust-genpdf render_to_file");
         let path = path.as_ref();
         let file = fs::File::create(path)
             .with_context(|| format!("Could not create file {}", path.display()))?;
@@ -803,7 +821,7 @@ pub trait PageDecorator {
     /// The returned area will be passed to the document content.
     fn decorate_page<'a>(
         &mut self,
-        context: &Context,
+        context: &mut Context,
         area: render::Area<'a>,
         style: style::Style,
     ) -> Result<render::Area<'a>, error::Error>;
@@ -858,11 +876,13 @@ impl SimplePageDecorator {
 impl PageDecorator for SimplePageDecorator {
     fn decorate_page<'a>(
         &mut self,
-        context: &Context,
+        context: &mut Context,
         mut area: render::Area<'a>,
         style: style::Style,
     ) -> Result<render::Area<'a>, error::Error> {
         self.page += 1;
+        context.page_number = self.page;
+        println!("in rust-genpdf decorate_page, area.size: {:?}", area.size());
         if let Some(margins) = self.margins {
             area.add_margins(margins);
         }
@@ -958,6 +978,8 @@ pub trait Element {
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct Context {
+    /// The page number of the current page.
+    pub page_number: usize,
     /// The font cache for this rendering process.
     pub font_cache: fonts::FontCache,
     /// The hyphenator to use for hyphenation.
@@ -972,7 +994,10 @@ pub struct Context {
 impl Context {
     #[cfg(not(feature = "hyphenation"))]
     fn new(font_cache: fonts::FontCache) -> Context {
-        Context { font_cache }
+        Context {
+            font_cache,
+            page_number: 0,
+        }
     }
 
     #[cfg(feature = "hyphenation")]

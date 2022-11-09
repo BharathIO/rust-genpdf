@@ -50,6 +50,7 @@ use std::mem;
 use crate::error::{Error, ErrorKind};
 use crate::fonts;
 use crate::render;
+use crate::style;
 use crate::style::{LineStyle, Style, StyledString};
 use crate::wrap;
 use crate::{Alignment, Context, Element, Margins, Mm, Position, RenderResult, Size};
@@ -201,6 +202,7 @@ impl Element for Text {
             Position::default(),
             style,
             &self.text.s,
+            context,
         )? {
             result.size = Size::new(
                 style.str_width(&context.font_cache, &self.text.s),
@@ -260,6 +262,9 @@ pub struct Paragraph {
     words: collections::VecDeque<StyledString>,
     style_applied: bool,
     alignment: Alignment,
+    style: style::Style,
+    borders: bool,
+    padding: i32,
 }
 
 impl Paragraph {
@@ -267,8 +272,40 @@ impl Paragraph {
     pub fn new(text: impl Into<StyledString>) -> Paragraph {
         Paragraph {
             text: vec![text.into()],
+            style: style::Style::new(),
             ..Default::default()
         }
+    }
+
+    /// set font size
+    pub fn set_font_size(&mut self, size: u8) {
+        self.style.set_font_size(size);
+    }
+
+    /// set font bold
+    pub fn set_bold(&mut self) {
+        self.style.set_bold();
+    }
+
+    /// set borders
+    pub fn set_borders(&mut self, borders: bool) {
+        self.borders = borders;
+    }
+
+    /// set padding
+    /// padding is the distance between the text and the border
+    pub fn set_padding(&mut self, padding: i32) {
+        self.padding = padding;
+    }
+
+    /// returns the current padding
+    pub fn get_padding(&self) -> i32 {
+        self.padding
+    }
+
+    /// has bordrs
+    pub fn has_borders(&self) -> bool {
+        self.borders
     }
 
     /// Sets the alignment of this paragraph.
@@ -315,7 +352,8 @@ impl Paragraph {
     fn apply_style(&mut self, style: Style) {
         if !self.style_applied {
             for s in &mut self.text {
-                s.style = style.and(s.style);
+                // s.style = style.and(s.style);
+                s.style = style.and(self.style);
             }
             self.style_applied = true;
         }
@@ -329,6 +367,14 @@ impl Element for Paragraph {
         mut area: render::Area<'_>,
         style: Style,
     ) -> Result<RenderResult, Error> {
+        // let w = area.size().width.0;
+        // area.set_width((0.5 * w as f32).into()); // use 30% of the page width
+        // if self.borders {
+        //     self.borders = false;
+        //     let mut fe = self.clone().framed(LineStyle::new());
+        //     return fe.render(context, area, style);
+        // }
+
         let mut result = RenderResult::default();
 
         self.apply_style(style);
@@ -354,7 +400,7 @@ impl Element for Paragraph {
 
             if let Some(mut section) = area.text_section(&context.font_cache, position, metrics) {
                 for s in line {
-                    section.print_str(&s.s, s.style)?;
+                    section.print_str(&s.s, s.style, context)?;
                     rendered_len += s.s.len();
                 }
                 rendered_len -= delta;
@@ -362,6 +408,7 @@ impl Element for Paragraph {
                 result.has_more = true;
                 break;
             }
+            // println!("metrics.line_height = {:?}", metrics.line_height);
             result.size = result
                 .size
                 .stack_vertical(Size::new(width, metrics.line_height));
@@ -661,6 +708,9 @@ impl<E: Element> Element for FramedElement<E> {
         area: render::Area<'_>,
         style: Style,
     ) -> Result<RenderResult, Error> {
+        // if let Some(margins) = self.margins {
+        // area.add_margins(20);
+        // }
         // For the element area calculations, we have to take into account the full line thickness.
         // For the frame area, we only need half because we specify the center of the line.
         let line_thickness = self.line_style.thickness();
@@ -691,6 +741,7 @@ impl<E: Element> Element for FramedElement<E> {
         }
 
         // Draw the frame.
+
         let top_left = Position::default();
         let top_right = Position::new(frame_area.size().width, 0);
         let bottom_left = Position::new(0, frame_area.size().height);
@@ -1028,6 +1079,7 @@ impl<E: Element> Element for BulletPoint<E> {
                 Position::new(self.indent - bullet_width - self.bullet_space, 0),
                 style,
                 self.bullet.as_str(),
+                context,
             )?;
             self.bullet_rendered = true;
         }
@@ -1392,6 +1444,7 @@ impl<'a, E: IntoBoxedElement> iter::Extend<E> for TableLayoutRow<'a> {
 ///
 /// [`CellDecorator`]: trait.CellDecorator.html
 /// [`FrameCellDecorator`]: struct.FrameCellDecorator.html
+///
 pub struct TableLayout {
     column_weights: Vec<usize>,
     rows: Vec<Vec<Box<dyn Element>>>,
