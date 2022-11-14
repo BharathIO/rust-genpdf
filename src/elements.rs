@@ -1505,11 +1505,11 @@ impl TableLayout {
         style: Style,
     ) -> Result<RenderResult, Error> {
         let mut result = RenderResult::default();
-        println!(
-            "in render_row with area: height {:?} and width {:?}",
-            area.size().height,
-            area.size().width
-        );
+        // println!(
+        //     "in render_row with area: height {:?} and width {:?}",
+        //     area.size().height,
+        //     area.size().width
+        // );
         let areas = area.split_horizontally(&self.column_weights);
         let cell_areas = if let Some(decorator) = &self.cell_decorator {
             areas

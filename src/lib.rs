@@ -782,6 +782,11 @@ impl Document {
         self.context.font_cache.load_pdf_fonts(&renderer)?;
         loop {
             let mut area = renderer.last_page().last_layer().area();
+            println!(
+                "before header area: height {:?} width {:?}",
+                area.size().height,
+                area.size().width
+            );
             if let Some(decorator) = &mut self.decorator {
                 area = decorator.decorate_page(&mut self.context, area, self.style)?;
             }
@@ -1028,6 +1033,131 @@ impl PageDecorator for CustomPageDecorator {
         let height = area.size().height - footer_size - from - Mm::from(15);
         println!("setting area height to {:?}", height);
         area.set_height(height);
+
+        Ok(area)
+    }
+}
+
+/// My page decorator
+///
+/// A style that can be applied to an element.
+///
+pub struct MyPageDecorator {
+    page: usize,
+    margins: Option<Margins>,
+    my_header_callback_fn: Option<MyHeaderCallback>,
+    my_footer_callback_fn: Option<MyFooterCallback>,
+}
+
+type MyHeaderCallback = Box<dyn Fn(usize) -> Result<Box<dyn Element>, error::Error>>;
+type MyFooterCallback = Box<dyn Fn(usize) -> Result<Box<dyn Element>, error::Error>>;
+
+impl MyPageDecorator {
+    /// Creates a new page decorator that does not modify the page.
+    pub fn new() -> MyPageDecorator {
+        MyPageDecorator {
+            page: 0,
+            margins: None,
+            my_header_callback_fn: None,
+            my_footer_callback_fn: None,
+        }
+    }
+
+    /// set margins
+    pub fn set_margins(&mut self, margins: Option<Margins>) {
+        self.margins = margins;
+    }
+
+    /// register header callback
+    pub fn register_header_callback_fn<F, E>(&mut self, cb: F)
+    where
+        F: Fn(usize) -> Result<E, error::Error> + 'static,
+        E: Element + 'static,
+    {
+        // self.my_header_callback_fn = Some(cb);
+        self.my_header_callback_fn = Some(Box::new(move |page| cb(page).map(|e| Box::new(e) as _)));
+    }
+
+    /// register footer callback
+    pub fn register_footer_callback_fn<F, E>(&mut self, cb: F)
+    where
+        F: Fn(usize) -> Result<E, error::Error> + 'static,
+        E: Element + 'static,
+    {
+        self.my_footer_callback_fn = Some(Box::new(move |page| cb(page).map(|e| Box::new(e) as _)));
+    }
+}
+
+impl PageDecorator for MyPageDecorator {
+    fn decorate_page<'a>(
+        &mut self,
+        context: &mut Context,
+        mut area: render::Area<'a>,
+        style: Style,
+    ) -> Result<render::Area<'a>, error::Error> {
+        self.page += 1;
+
+        if let Some(margins) = self.margins {
+            area.add_margins(margins);
+        }
+        println!(
+            "area element at: height {:?} width {:?}",
+            area.size().height,
+            area.size().width
+        );
+
+        // println!(
+        //     "before footer_area at: height {:?} width {:?}",
+        //     footer_area.size().height,
+        //     footer_area.size().width
+        // );
+        // Render Header
+        if let Some(cb) = &self.my_header_callback_fn {
+            match cb(self.page) {
+                Ok(mut element) => {
+                    let result = element.render(context, area.clone(), style)?;
+                    area.add_offset(Position::new(0, result.size.height));
+                }
+                Err(e) => return Err(e),
+            }
+        }
+
+        let mut footer_area = area.next_layer();
+        // println!(
+        //     "after header wrote: footer_area at: height {:?} width {:?}",
+        //     footer_area.size().height,
+        //     footer_area.size().width
+        // );
+
+        // println!(
+        //     "after header wrote: area at: height {:?} width {:?}",
+        //     area.size().height,
+        //     area.size().width
+        // );
+
+        if let Some(cb) = &self.my_footer_callback_fn {
+            match cb(self.page) {
+                Ok(mut element) => {
+                    let height = footer_area.size().height;
+                    let mut y = height;
+                    let margin_bottom = match self.margins {
+                        Some(margins) => margins.bottom,
+                        None => Mm::from(0),
+                    };
+                    footer_area.set_height(y - margin_bottom);
+                    let probable_height = 15.into();
+                    footer_area.set_start_y(y + probable_height);
+                    let result = element.render(context, footer_area.clone(), style)?;
+                    let footer_size = result.size.height - height;
+                    let height = area.size().height - footer_size;
+                    if let Some(mr) = self.margins {
+                        y += mr.top;
+                    }
+                    area.set_height(height - y);
+                }
+                Err(e) => return Err(e),
+            }
+        }
 
         Ok(area)
     }

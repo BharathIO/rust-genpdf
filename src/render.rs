@@ -524,6 +524,11 @@ impl<'p> Area<'p> {
         self.origin.x += left;
     }
 
+    /// set start y
+    pub fn set_start_y(&mut self, start_y: Mm) {
+        self.origin.y = start_y;
+    }
+
     /// Sets the size of this area.
     pub fn set_size(&mut self, size: impl Into<Size>) {
         self.size = size.into();
