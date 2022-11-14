@@ -518,6 +518,12 @@ impl<'p> Area<'p> {
         self.size.height -= offset.y;
     }
 
+    /// add left x
+    ///
+    pub fn add_left(&mut self, left: Mm) {
+        self.origin.x += left;
+    }
+
     /// Sets the size of this area.
     pub fn set_size(&mut self, size: impl Into<Size>) {
         self.size = size.into();

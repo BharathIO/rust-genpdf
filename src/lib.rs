@@ -169,7 +169,12 @@ use derive_more::{
     Add, AddAssign, Div, DivAssign, From, Into, Mul, MulAssign, Sub, SubAssign, Sum,
 };
 
+use elements::FrameCellDecorator;
+use elements::Paragraph;
+use elements::TableLayout;
 use error::Context as _;
+use style::LineStyle;
+use style::Style;
 
 /// A length measured in millimeters.
 ///
@@ -574,6 +579,8 @@ pub struct Document {
     creation_date: Option<printpdf::OffsetDateTime>,
     modification_date: Option<printpdf::OffsetDateTime>,
     margins: Option<Margins>,
+    has_header: Option<bool>,
+    has_footer: Option<bool>,
 }
 
 impl Document {
@@ -591,6 +598,8 @@ impl Document {
             creation_date: None,
             modification_date: None,
             margins: None,
+            has_header: None,
+            has_footer: None,
         }
     }
 
@@ -676,6 +685,36 @@ impl Document {
             bottom: bottom.into(),
             left: left.into(),
         });
+    }
+
+    //// header
+    ///
+    pub fn set_has_header(&mut self, has_header: bool) {
+        self.has_header = Some(has_header);
+    }
+
+    //// footer
+    ///
+    pub fn set_has_footer(&mut self, has_footer: bool) {
+        self.has_footer = Some(has_footer);
+    }
+
+    /// get header
+    ///
+    pub fn get_has_header(&self) -> bool {
+        match self.has_header {
+            Some(has_header) => has_header,
+            None => false,
+        }
+    }
+
+    /// get footer
+    ///
+    pub fn get_has_footer(&self) -> bool {
+        match self.has_footer {
+            Some(has_footer) => has_footer,
+            None => false,
+        }
     }
 
     /// get_margins
@@ -892,6 +931,197 @@ impl PageDecorator for SimplePageDecorator {
             area.add_offset(Position::new(0, result.size.height));
         }
         Ok(area)
+    }
+}
+
+#[derive(Default, Clone, Debug)]
+/// A style that can be applied to an element.
+///
+pub struct CustomPageDecorator {
+    page: usize,
+    margins: Option<Margins>,
+}
+
+impl CustomPageDecorator {
+    /// set margins
+    ///
+    pub fn set_margins(&mut self, margins: Option<Margins>) {
+        self.margins = margins;
+    }
+
+    /// Creates a new page decorator that does not modify the page.
+    ///
+    pub fn new() -> CustomPageDecorator {
+        CustomPageDecorator::default()
+    }
+    /// Creates a new page decorator that does not modify the page.
+    ///
+    pub fn generate_footer(&self, _top_padding: Mm) -> Box<dyn Element> {
+        // let p = Paragraph::new(format!("Custom Page Footer {}", self.page))
+        //     .aligned(Alignment::Right)
+        //     .styled(Style::new().with_font_size(8))
+        //     .padded(Margins::trbl(top_padding, 0, 0, 0));
+        // .framed(LineStyle::new());
+
+        let mut footer_table = TableLayout::new(vec![1, 1, 1]);
+        footer_table.set_cell_decorator(FrameCellDecorator::new(true, true, true));
+        for i in 0..2 {
+            match footer_table.push_row(vec![
+                Box::new(Paragraph::new(format!("row {} cell 0", i))),
+                Box::new(Paragraph::new(format!("row {} cell 1", i))),
+                Box::new(Paragraph::new(format!("row {} cell 2", i))),
+            ]) {
+                Ok(_) => {}
+                Err(e) => {
+                    println!("error: {:?}", e);
+                }
+            }
+        }
+        // match x.push_row(vec![
+        //     Box::new(p.clone()),
+        //     Box::new(p.clone()),
+        //     Box::new(p.clone()),
+        // ]) {
+        //     Ok(_) => {}
+        //     Err(e) => {
+        //         println!("error: {:?}", e);
+        //     }
+        // };
+        Box::new(footer_table)
+    }
+}
+
+impl PageDecorator for CustomPageDecorator {
+    fn decorate_page<'a>(
+        &mut self,
+        context: &mut Context,
+        mut area: render::Area<'a>,
+        style: Style,
+    ) -> Result<render::Area<'a>, error::Error> {
+        self.page += 1;
+        let mut footer_area = area.next_layer();
+
+        if let Some(margins) = self.margins {
+            area.add_margins(margins);
+        }
+        //? Header
+        let mut element = Paragraph::new("Header").framed(LineStyle::new().with_thickness(2));
+        let result = element.render(context, area.clone(), style)?;
+        area.add_offset(Position::new(0, result.size.height + Mm::from(5)));
+
+        //? Footer
+        footer_area.add_margins(Margins::trbl(0, 25, 0, 10));
+        let height = footer_area.size().height;
+        let mut element = self.generate_footer(height - Mm::from(11));
+        let from = Mm::from(270);
+        // set footer_area height
+
+        // if let Some(margins) = self.margins {
+        //     footer_area.add_offset(Position::new(margins.left, from))
+        // } else {
+        //     footer_area.add_offset(Position::new(0, from));
+        // }
+        footer_area.add_offset(Position::new(0, from));
+        footer_area.add_left(Mm::from(10));
+        let result = element.render(context, footer_area.clone(), style)?;
+        let footer_size = result.size.height - height + Mm::from(15);
+        let height = area.size().height - footer_size - from - Mm::from(15);
+        println!("setting area height to {:?}", height);
+        area.set_height(height);
+
+        Ok(area)
+    }
+}
+
+type CustomHeaderCallback = Box<dyn Fn(usize) -> Result<Box<dyn Element>, error::Error>>;
+
+// #[derive(Default, Clone, Debug)]
+
+/// footer
+pub struct CustomPageHeaderFooterDecorator {
+    page: usize,
+    header_callback: Option<CustomHeaderCallback>,
+}
+
+impl CustomPageHeaderFooterDecorator {
+    /// new
+    pub fn new() -> CustomPageHeaderFooterDecorator {
+        CustomPageHeaderFooterDecorator {
+            page: 0,
+            header_callback: None,
+        }
+    }
+
+    /// set header
+    pub fn set_header_cb<F, E>(&mut self, cb: F)
+    where
+        F: Fn(usize) -> Result<E, error::Error> + 'static,
+        E: Element + 'static,
+    {
+        self.header_callback = Some(Box::new(move |page| cb(page).map(|e| Box::new(e) as _)));
+    }
+
+    // pub fn set_header_callback<F, E>(&mut self, cb: F)
+    // where
+    //     F: Fn(usize) -> E + 'static,
+    //     E: Element + 'static,
+    // {
+    //     // We manually box the return type of the callback so that it is easier to write closures.
+    //     self.header_cb = Some(Box::new(move |page| Box::new(cb(page))));
+    // }
+
+    /// gen footer
+    pub fn generate_footer(&self, _top_padding: Mm) -> Result<Box<dyn Element>, error::Error> {
+        // match &self.header_callback {
+        //     Some(cb) => {
+        //         return cb(self.page);
+        //     }
+        //     None => {
+        //         return Err(error::Error::new(
+        //             "No footer defined",
+        //             error::ErrorKind::InvalidData,
+        //         ));
+        //     }
+        // }
+        Ok(Box::new(
+            Paragraph::new(format!("Page {}", self.page))
+                .aligned(Alignment::Right)
+                .styled(Style::new().with_font_size(8))
+                .padded(Margins::trbl(_top_padding, 0, 0, 0)),
+        ))
+    }
+}
+
+impl PageDecorator for CustomPageHeaderFooterDecorator {
+    fn decorate_page<'a>(
+        &mut self,
+        context: &mut Context,
+        mut area: render::Area<'a>,
+        style: style::Style,
+    ) -> Result<render::Area<'a>, error::Error> {
+        self.page += 1;
+        let mut footer_area = area.next_layer();
+
+        //? Header
+        let mut element = Paragraph::new("Header");
+        area.add_margins(10);
+        let result = element.render(context, area.clone(), style)?;
+        area.add_offset(Position::new(0, result.size.height + Mm::from(5)));
+
+        //? Footer
+        footer_area.add_margins(Margins::trbl(0, 10, 0, 10));
+        let height = footer_area.size().height;
+        let element = self.generate_footer(height);
+        match element {
+            Ok(mut ele) => {
+                let result = ele.render(context, footer_area.clone(), style)?;
+                let footer_size = result.size.height - height + Mm::from(10);
+                area.set_height(area.size().height - footer_size);
+
+                Ok(area)
+            }
+            Err(e) => return Err(e),
+        }
     }
 }
 
