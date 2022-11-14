@@ -965,7 +965,7 @@ impl CustomPageDecorator {
 
         let mut footer_table = TableLayout::new(vec![1, 1, 1]);
         footer_table.set_cell_decorator(FrameCellDecorator::new(true, true, true));
-        for i in 0..2 {
+        for i in 0..4 {
             match footer_table.push_row(vec![
                 Box::new(Paragraph::new(format!("row {} cell 0", i))),
                 Box::new(Paragraph::new(format!("row {} cell 1", i))),
@@ -1010,7 +1010,7 @@ impl PageDecorator for CustomPageDecorator {
         area.add_offset(Position::new(0, result.size.height + Mm::from(5)));
 
         //? Footer
-        footer_area.add_margins(Margins::trbl(0, 25, 0, 10));
+        footer_area.add_margins(Margins::trbl(0, 30, 0, 10));
         let height = footer_area.size().height;
         let mut element = self.generate_footer(height - Mm::from(11));
         let from = Mm::from(270);
