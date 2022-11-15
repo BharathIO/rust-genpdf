@@ -160,6 +160,13 @@ impl Element for LinearLayout {
         // TODO: add horizontal layout
         self.render_vertical(context, area, style)
     }
+
+    fn get_probable_height(&self, _style: Style, context: &Context, area: render::Area<'_>) -> Mm {
+        self.elements
+            .iter()
+            .map(|e| e.get_probable_height(_style, context, area.clone()))
+            .sum()
+    }
 }
 
 impl<E: IntoBoxedElement> iter::Extend<E> for LinearLayout {
@@ -212,6 +219,15 @@ impl Element for Text {
             result.has_more = true;
         }
         Ok(result)
+    }
+
+    fn get_probable_height(
+        &self,
+        style: style::Style,
+        context: &Context,
+        _area: render::Area<'_>,
+    ) -> Mm {
+        style.line_height(&context.font_cache)
     }
 }
 
@@ -436,6 +452,26 @@ impl Element for Paragraph {
 
         Ok(result)
     }
+
+    fn get_probable_height(
+        &self,
+        _style: style::Style,
+        context: &Context,
+        area: render::Area<'_>,
+    ) -> Mm {
+        let mut height = Mm::default();
+        let words = wrap::Words::new(self.text.clone()).collect::<Vec<_>>();
+        let mut wrapper =
+            wrap::Wrapper::new(words.iter().map(Into::into), context, area.size().width);
+        for (line, _) in &mut wrapper {
+            let metrics = line
+                .iter()
+                .map(|s| s.style.metrics(&context.font_cache))
+                .fold(fonts::Metrics::default(), |max, m| max.max(&m));
+            height += metrics.line_height;
+        }
+        height
+    }
 }
 
 impl From<Vec<StyledString>> for Paragraph {
@@ -509,6 +545,21 @@ impl Element for Break {
         }
         Ok(result)
     }
+
+    fn get_probable_height(
+        &self,
+        style: style::Style,
+        context: &Context,
+        area: render::Area<'_>,
+    ) -> Mm {
+        let line_height = style.line_height(&context.font_cache);
+        let break_height = line_height * self.lines;
+        if break_height < area.size().height {
+            break_height
+        } else {
+            area.size().height
+        }
+    }
 }
 
 /// A page break.
@@ -551,6 +602,15 @@ impl Element for PageBreak {
                 has_more: true,
             })
         }
+    }
+
+    fn get_probable_height(
+        &self,
+        _style: style::Style,
+        _context: &Context,
+        _area: render::Area<'_>,
+    ) -> Mm {
+        Mm::default()
     }
 }
 
@@ -607,6 +667,22 @@ impl<E: Element> Element for PaddedElement<E> {
         result.size.height += self.padding.top + self.padding.bottom;
         Ok(result)
     }
+
+    fn get_probable_height(
+        &self,
+        style: style::Style,
+        context: &Context,
+        area: render::Area<'_>,
+    ) -> Mm {
+        let mut area = area;
+        area.add_margins(Margins {
+            bottom: Mm(0.0),
+            ..self.padding
+        });
+        self.element.get_probable_height(style, context, area)
+            + self.padding.top
+            + self.padding.bottom
+    }
 }
 
 /// Adds a default style to the wrapped element and its children.
@@ -655,6 +731,15 @@ impl<E: Element> Element for StyledElement<E> {
     ) -> Result<RenderResult, Error> {
         style.merge(self.style);
         self.element.render(context, area, style)
+    }
+
+    fn get_probable_height(
+        &self,
+        style: style::Style,
+        context: &Context,
+        area: render::Area<'_>,
+    ) -> Mm {
+        self.element.get_probable_height(style, context, area)
     }
 }
 
@@ -769,6 +854,15 @@ impl<E: Element> Element for FramedElement<E> {
 
         Ok(result)
     }
+
+    fn get_probable_height(
+        &self,
+        style: style::Style,
+        context: &Context,
+        area: render::Area<'_>,
+    ) -> Mm {
+        self.element.get_probable_height(style, context, area)
+    }
 }
 
 /// An unordered list of elements with bullet points.
@@ -868,6 +962,15 @@ impl Element for UnorderedList {
         style: Style,
     ) -> Result<RenderResult, Error> {
         self.layout.render(context, area, style)
+    }
+
+    fn get_probable_height(
+        &self,
+        style: style::Style,
+        context: &Context,
+        area: render::Area<'_>,
+    ) -> Mm {
+        self.layout.get_probable_height(style, context, area)
     }
 }
 
@@ -987,6 +1090,15 @@ impl Element for OrderedList {
     ) -> Result<RenderResult, Error> {
         self.layout.render(context, area, style)
     }
+
+    fn get_probable_height(
+        &self,
+        style: style::Style,
+        context: &Context,
+        area: render::Area<'_>,
+    ) -> Mm {
+        self.layout.get_probable_height(style, context, area)
+    }
 }
 
 impl Default for OrderedList {
@@ -1084,6 +1196,15 @@ impl<E: Element> Element for BulletPoint<E> {
             self.bullet_rendered = true;
         }
         Ok(result)
+    }
+
+    fn get_probable_height(
+        &self,
+        style: style::Style,
+        context: &Context,
+        area: render::Area<'_>,
+    ) -> Mm {
+        self.element.get_probable_height(style, context, area)
     }
 }
 
@@ -1567,5 +1688,24 @@ impl Element for TableLayout {
         }
         result.has_more = self.render_idx < self.rows.len();
         Ok(result)
+    }
+
+    fn get_probable_height(
+        &self,
+        _style: style::Style,
+        context: &Context,
+        area: render::Area<'_>,
+    ) -> Mm {
+        let mut height = Mm::from(0);
+        for row in self.rows.iter() {
+            let mut row_height = Mm::from(0);
+            let areas = area.split_horizontally(&self.column_weights);
+            for (area, element) in areas.iter().zip(row.iter()) {
+                let element_height = element.get_probable_height(_style, context, area.clone());
+                row_height = row_height.max(element_height);
+            }
+            height += row_height;
+        }
+        height
     }
 }

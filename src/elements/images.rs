@@ -232,6 +232,15 @@ impl Element for Image {
 
         Ok(result)
     }
+
+    fn get_probable_height(
+        &self,
+        _style: style::Style,
+        _context: &Context,
+        _area: render::Area<'_>,
+    ) -> Mm {
+        self.get_size().height
+    }
 }
 
 /// Given the Size of a box (width/height), compute the bounding-box size and offset when

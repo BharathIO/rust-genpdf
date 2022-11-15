@@ -1096,6 +1096,7 @@ impl PageDecorator for MyPageDecorator {
         style: Style,
     ) -> Result<render::Area<'a>, error::Error> {
         self.page += 1;
+        context.page_number = self.page;
         if let Some(margins) = self.margins {
             area.add_margins(margins);
         }
@@ -1114,21 +1115,17 @@ impl PageDecorator for MyPageDecorator {
         if let Some(cb) = &self.my_footer_callback_fn {
             match cb(self.page) {
                 Ok(mut element) => {
-                    let height = footer_area.size().height; // 271
-                    let start_y = footer_area.get_start_y();
-                    // let mut y = height;
+                    let height = footer_area.size().height;
                     let margin_bottom = match self.margins {
                         Some(margins) => margins.bottom,
                         None => Mm::from(0),
                     };
-                    // footer_area.set_height(y - margin_bottom);
-                    // footer_area.set_start_y(260.into());
-
-                    let footer_max_height = 30;
+                    let footer_max_height =
+                        element.get_probable_height(style, context, footer_area.clone());
+                    println!("probable footer_max_height: {:?}", footer_max_height);
                     let footer_height = margin_bottom + footer_max_height.into();
                     let y_offset = height - footer_height;
                     footer_area.add_offset(Position::new(0, y_offset));
-
                     let footer_el_result = element.render(context, footer_area.clone(), style)?;
                     let footer_size = footer_el_result.size.height - height;
                     let height = footer_area.size().height - footer_size;
@@ -1290,6 +1287,14 @@ pub trait Element {
         area: render::Area<'_>,
         style: style::Style,
     ) -> Result<RenderResult, error::Error>;
+
+    /// Returns the probable height of this element.
+    fn get_probable_height(
+        &self,
+        _style: style::Style,
+        context: &Context,
+        area: render::Area<'_>,
+    ) -> Mm;
 
     /// Draws a frame around this element using the given line style.
     fn framed(self, line_style: impl Into<style::LineStyle>) -> elements::FramedElement<Self>
