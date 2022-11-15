@@ -783,7 +783,7 @@ impl Document {
         loop {
             let mut area = renderer.last_page().last_layer().area();
             println!(
-                "before header area: height {:?} width {:?}",
+                "before decorate_page area: height {:?} width {:?}",
                 area.size().height,
                 area.size().width
             );
@@ -1096,21 +1096,9 @@ impl PageDecorator for MyPageDecorator {
         style: Style,
     ) -> Result<render::Area<'a>, error::Error> {
         self.page += 1;
-
         if let Some(margins) = self.margins {
             area.add_margins(margins);
         }
-        println!(
-            "area element at: height {:?} width {:?}",
-            area.size().height,
-            area.size().width
-        );
-
-        // println!(
-        //     "before footer_area at: height {:?} width {:?}",
-        //     footer_area.size().height,
-        //     footer_area.size().width
-        // );
         // Render Header
         if let Some(cb) = &self.my_header_callback_fn {
             match cb(self.page) {
@@ -1123,37 +1111,33 @@ impl PageDecorator for MyPageDecorator {
         }
 
         let mut footer_area = area.next_layer();
-        // println!(
-        //     "after header wrote: footer_area at: height {:?} width {:?}",
-        //     footer_area.size().height,
-        //     footer_area.size().width
-        // );
-
-        // println!(
-        //     "after header wrote: area at: height {:?} width {:?}",
-        //     area.size().height,
-        //     area.size().width
-        // );
-
         if let Some(cb) = &self.my_footer_callback_fn {
             match cb(self.page) {
                 Ok(mut element) => {
-                    let height = footer_area.size().height;
-                    let mut y = height;
+                    let height = footer_area.size().height; // 271
+                    let start_y = footer_area.get_start_y();
+                    // let mut y = height;
                     let margin_bottom = match self.margins {
                         Some(margins) => margins.bottom,
                         None => Mm::from(0),
                     };
-                    footer_area.set_height(y - margin_bottom);
-                    let probable_height = 15.into();
-                    footer_area.set_start_y(y + probable_height);
-                    let result = element.render(context, footer_area.clone(), style)?;
-                    let footer_size = result.size.height - height;
-                    let height = area.size().height - footer_size;
+                    // footer_area.set_height(y - margin_bottom);
+                    // footer_area.set_start_y(260.into());
+
+                    let footer_max_height = 30;
+                    let footer_height = margin_bottom + footer_max_height.into();
+                    let y_offset = height - footer_height;
+                    footer_area.add_offset(Position::new(0, y_offset));
+
+                    let footer_el_result = element.render(context, footer_area.clone(), style)?;
+                    let footer_size = footer_el_result.size.height - height;
+                    let height = footer_area.size().height - footer_size;
+                    println!("setting area height to {:?}", height);
+                    let mut remaining_area_height = height - footer_height;
                     if let Some(mr) = self.margins {
-                        y += mr.top;
+                        remaining_area_height -= mr.top;
                     }
-                    area.set_height(height - y);
+                    area.set_height(remaining_area_height);
                 }
                 Err(e) => return Err(e),
             }

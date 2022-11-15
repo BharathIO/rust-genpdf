@@ -529,6 +529,11 @@ impl<'p> Area<'p> {
         self.origin.y = start_y;
     }
 
+    /// get start y
+    pub fn get_start_y(&self) -> Mm {
+        self.origin.y
+    }
+
     /// Sets the size of this area.
     pub fn set_size(&mut self, size: impl Into<Size>) {
         self.size = size.into();
