@@ -1571,7 +1571,10 @@ pub struct TableLayout {
     rows: Vec<Vec<Box<dyn Element>>>,
     render_idx: usize,
     cell_decorator: Option<Box<dyn CellDecorator>>,
+    header_row_callback_fn: Option<TableHeaderRowCallback>,
 }
+
+type TableHeaderRowCallback = Box<dyn Fn(usize) -> Result<Box<dyn Element>, Error>>;
 
 impl TableLayout {
     /// Creates a new table layout with the given column weights.
@@ -1584,7 +1587,18 @@ impl TableLayout {
             rows: Vec::new(),
             render_idx: 0,
             cell_decorator: None,
+            header_row_callback_fn: None,
         }
+    }
+
+    /// register header row callback
+    pub fn register_header_row_callback_fn<F, E>(&mut self, cb: F)
+    where
+        F: Fn(usize) -> Result<E, Error> + 'static,
+        E: Element + 'static,
+    {
+        self.header_row_callback_fn =
+            Some(Box::new(move |page| cb(page).map(|e| Box::new(e) as _)));
     }
 
     /// Sets the cell decorator for this table.
@@ -1626,11 +1640,6 @@ impl TableLayout {
         style: Style,
     ) -> Result<RenderResult, Error> {
         let mut result = RenderResult::default();
-        // println!(
-        //     "in render_row with area: height {:?} and width {:?}",
-        //     area.size().height,
-        //     area.size().width
-        // );
         let areas = area.split_horizontally(&self.column_weights);
         let cell_areas = if let Some(decorator) = &self.cell_decorator {
             areas
@@ -1677,6 +1686,41 @@ impl Element for TableLayout {
             decorator.set_table_size(self.column_weights.len(), self.rows.len());
         }
         result.size.width = area.size().width;
+
+        // render header
+        if let Some(cb) = &self.header_row_callback_fn {
+            println!("Calling header row callback");
+            let rr = match cb(context.page_number) {
+                Ok(v) => {
+                    println!("Got header row");
+                    Ok(v)
+                }
+                Err(e) => Err(e),
+            };
+            match rr {
+                Ok(mut element) => {
+                    println!("Rendering header row..");
+                    let ll: &LinearLayout = {
+                        match element.as_any().downcast_ref::<LinearLayout>() {
+                            Some(load) => load,
+                            None => panic!("WebEvent is not a PageLoad!"),
+                        }
+                    };
+                    println!("Got decoded linear layout");
+                    // match element.downcast_ref::<LinearLayout>() {
+                    //     Some(text) => println!("Downcast to LinearLayour"),
+                    //     None => println!("No string..."),
+                    // };
+                    let result = element.render(context, area.clone(), style)?;
+                    area.add_offset(Position::new(0, result.size.height));
+                    println!("Success ");
+                }
+                Err(e) => {
+                    return Err(e);
+                }
+            };
+        };
+
         while self.render_idx < self.rows.len() {
             let row_result = self.render_row(context, area.clone(), style)?;
             result.size.height += row_result.size.height;
