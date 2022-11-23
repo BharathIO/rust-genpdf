@@ -65,6 +65,17 @@ pub struct Image {
 }
 
 impl Image {
+    /// Creates a new image
+    pub fn new(data: image::DynamicImage) -> Self {
+        Self {
+            data,
+            alignment: Alignment::Left,
+            position: None,
+            scale: Scale::new(1.0, 1.0),
+            rotation: Rotation::from_degrees(0.0),
+            dpi: None,
+        }
+    }
     /// Creates a new image from an already loaded image.
     pub fn from_dynamic_image(data: image::DynamicImage) -> Result<Self, Error> {
         if data.color().has_alpha() {
@@ -114,6 +125,11 @@ impl Image {
         let reader = image::io::Reader::open(path)
             .with_context(|| format!("Could not read image from path {}", path.display()))?;
         Self::from_image_reader(reader)
+    }
+
+    /// from bytes
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, Error> {
+        Self::from_reader(std::io::Cursor::new(bytes))
     }
 
     /// Translates the image over to position.
@@ -193,6 +209,18 @@ impl Image {
     pub fn with_dpi(mut self, dpi: f64) -> Self {
         self.set_dpi(dpi);
         self
+    }
+
+    /// Load image data from given file path
+    pub fn with_file_path<P: AsRef<path::Path>>(mut self, path: P) {
+        match Self::from_path(path) {
+            Ok(image) => {
+                self.data = image.data;
+            }
+            Err(e) => {
+                eprintln!("Error loading image: {}", e);
+            }
+        }
     }
 }
 
