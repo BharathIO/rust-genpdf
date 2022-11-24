@@ -280,7 +280,7 @@ pub struct Paragraph {
     alignment: Alignment,
     style: style::Style,
     borders: bool,
-    padding: i32,
+    margins: Option<Margins>,
 }
 
 impl Paragraph {
@@ -308,15 +308,15 @@ impl Paragraph {
         self.borders = borders;
     }
 
-    /// set padding
-    /// padding is the distance between the text and the border
-    pub fn set_padding(&mut self, padding: i32) {
-        self.padding = padding;
+    /// set margins
+    /// margins is the distance between the text and the border
+    pub fn set_margins(&mut self, margins: Margins) {
+        self.margins = Some(margins);
     }
 
     /// returns the current padding
-    pub fn get_padding(&self) -> i32 {
-        self.padding
+    pub fn get_margins(&self) -> Option<Margins> {
+        self.margins
     }
 
     /// has bordrs
@@ -358,6 +358,10 @@ impl Paragraph {
     }
 
     fn get_offset(&self, width: Mm, max_width: Mm) -> Mm {
+        println!(
+            "paragraph width: {:?}, max_width: {:?}, alignment: {:?}",
+            width, max_width, self.alignment
+        );
         match self.alignment {
             Alignment::Left => Mm::default(),
             Alignment::Center => (max_width - width) / 2.0,
@@ -1368,6 +1372,7 @@ impl CellDecorator for FrameCellDecorator {
                 0.into()
             },
         );
+        println!("in prepareCell, margins: {:?}", margins);
         area.add_margins(margins);
         area
     }
@@ -1417,6 +1422,10 @@ impl CellDecorator for FrameCellDecorator {
         }
 
         if print_right {
+            println!(
+                "drawing right line, right: {:?}, bottom: {:?}, top: {:?}, line_offser: {:?}",
+                right, bottom, top, line_offset
+            );
             area.draw_line(
                 vec![
                     Position::new(right - line_offset, top),
@@ -1681,6 +1690,7 @@ impl TableLayout {
         style: Style,
     ) -> Result<RenderResult, Error> {
         let mut result = RenderResult::default();
+        println!("render_row: total area width: {:?}", area.size().width);
         let areas = area.split_horizontally(&self.column_weights);
         let cell_areas = if let Some(decorator) = &self.cell_decorator {
             areas
@@ -1702,6 +1712,7 @@ impl TableLayout {
 
         if let Some(decorator) = &mut self.cell_decorator {
             for (i, area) in areas.into_iter().enumerate() {
+                println!("render cell {}, area width {:?}", i, area.size().width);
                 let height =
                     decorator.decorate_cell(i, self.render_idx, result.has_more, area, row_height);
                 result.size.height = result.size.height.max(height);
@@ -1738,31 +1749,14 @@ impl Element for TableLayout {
 
         // render header
         if let Some(cb) = &self.header_row_callback_fn {
-            println!("Calling header row callback");
             let rr = match cb(context.page_number) {
-                Ok(v) => {
-                    println!("Got header row");
-                    Ok(v)
-                }
+                Ok(v) => Ok(v),
                 Err(e) => Err(e),
             };
             match rr {
                 Ok(mut element) => {
-                    println!("Rendering header row..");
-                    // let ll: &LinearLayout = {
-                    //     match element.as_any().downcast_ref::<LinearLayout>() {
-                    //         Some(load) => load,
-                    //         None => panic!("WebEvent is not a PageLoad!"),
-                    //     }
-                    // };
-                    // println!("Got decoded linear layout");
-                    // match element.downcast_ref::<LinearLayout>() {
-                    //     Some(text) => println!("Downcast to LinearLayour"),
-                    //     None => println!("No string..."),
-                    // };
                     let result = element.render(context, area.clone(), style)?;
                     area.add_offset(Position::new(0, result.size.height));
-                    println!("Success ");
                 }
                 Err(e) => {
                     return Err(e);
