@@ -1572,23 +1572,64 @@ pub struct TableLayout {
     render_idx: usize,
     cell_decorator: Option<Box<dyn CellDecorator>>,
     header_row_callback_fn: Option<TableHeaderRowCallback>,
+    draw_inner_borders: bool,
+    draw_outer_borders: bool,
+    has_header_row_callback: bool,
 }
 
 type TableHeaderRowCallback = Box<dyn Fn(usize) -> Result<Box<dyn Element>, Error>>;
 
 impl TableLayout {
+    // /// Return column weights
+    // Return column widths
+    pub fn column_weights(&self) -> Vec<usize> {
+        self.column_weights.clone()
+    }
+
+    // /// Return draw_inner_borders, draw_outer_borders
+    // borders are used to create a clone of table
+    pub fn borders(&self) -> (bool, bool) {
+        (self.draw_inner_borders, self.draw_outer_borders)
+    }
+
+    /// Creates a new table layout with the given column weights.
+    ///
+    pub fn new(column_weights: Vec<usize>) -> Self {
+        TableLayout::new_with_borders(column_weights, false, false)
+    }
+
     /// Creates a new table layout with the given column weights.
     ///
     /// The column weights are used to determine the relative width of the columns.  The number of
     /// column weights determines the number of columns in the table.
-    pub fn new(column_weights: Vec<usize>) -> TableLayout {
-        TableLayout {
+    pub fn new_with_borders(
+        column_weights: Vec<usize>,
+        draw_inner_borders: bool,
+        draw_outer_borders: bool,
+    ) -> TableLayout {
+        let mut tl = TableLayout {
             column_weights,
             rows: Vec::new(),
             render_idx: 0,
             cell_decorator: None,
             header_row_callback_fn: None,
-        }
+            draw_inner_borders,
+            draw_outer_borders,
+            has_header_row_callback: false,
+        };
+        set_cell_decorator(&mut tl, draw_inner_borders, draw_outer_borders);
+        tl
+    }
+
+    /// get has header row callback
+    ///
+    pub fn has_header_row_callback(&self) -> bool {
+        self.has_header_row_callback
+    }
+    /// set has header row callback
+    ///
+    pub fn set_has_header_row_callback(&mut self, has_header_row_callback: bool) {
+        self.has_header_row_callback = has_header_row_callback;
     }
 
     /// register header row callback
@@ -1671,6 +1712,14 @@ impl TableLayout {
     }
 }
 
+fn set_cell_decorator(tl: &mut TableLayout, draw_inner_borders: bool, draw_outer_borders: bool) {
+    tl.set_cell_decorator(FrameCellDecorator::new(
+        draw_inner_borders,
+        draw_outer_borders,
+        true,
+    ));
+}
+
 impl Element for TableLayout {
     fn render(
         &mut self,
@@ -1700,13 +1749,13 @@ impl Element for TableLayout {
             match rr {
                 Ok(mut element) => {
                     println!("Rendering header row..");
-                    let ll: &LinearLayout = {
-                        match element.as_any().downcast_ref::<LinearLayout>() {
-                            Some(load) => load,
-                            None => panic!("WebEvent is not a PageLoad!"),
-                        }
-                    };
-                    println!("Got decoded linear layout");
+                    // let ll: &LinearLayout = {
+                    //     match element.as_any().downcast_ref::<LinearLayout>() {
+                    //         Some(load) => load,
+                    //         None => panic!("WebEvent is not a PageLoad!"),
+                    //     }
+                    // };
+                    // println!("Got decoded linear layout");
                     // match element.downcast_ref::<LinearLayout>() {
                     //     Some(text) => println!("Downcast to LinearLayour"),
                     //     None => println!("No string..."),
