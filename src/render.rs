@@ -722,15 +722,9 @@ impl<'f, 'p> TextSection<'f, 'p> {
         &mut self,
         s: impl AsRef<str>,
         style: Style,
-        context: &Context,
+        _context: &Context,
     ) -> Result<(), Error> {
-        let exp = &"#{page}";
-        let mut s = s.as_ref().to_string();
-        if s.contains(exp) {
-            let page = context.page_number;
-            s = s.replace(exp, &page.to_string());
-        }
-        let s = s.as_str();
+        let s = s.as_ref();
         let font = style.font(self.font_cache);
         // Adjust cursor to remove left bearing of the first character of the first string
         if self.is_first {

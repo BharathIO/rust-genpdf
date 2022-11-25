@@ -358,10 +358,6 @@ impl Paragraph {
     }
 
     fn get_offset(&self, width: Mm, max_width: Mm) -> Mm {
-        println!(
-            "paragraph width: {:?}, max_width: {:?}, alignment: {:?}",
-            width, max_width, self.alignment
-        );
         match self.alignment {
             Alignment::Left => Mm::default(),
             Alignment::Center => (max_width - width) / 2.0,
@@ -380,6 +376,23 @@ impl Paragraph {
     }
 }
 
+fn replace_page_number(
+    words: collections::VecDeque<StyledString>,
+    context: &Context,
+) -> collections::VecDeque<StyledString> {
+    let mut words_copy = words.clone();
+    // loop words and replace #{page} with context.page_number
+    for i in 0..words.len() {
+        let mut s = words[i].s.clone();
+        if s.contains(&"#{page}") {
+            let page = context.page_number;
+            s = s.replace(&"#{page}", &page.to_string());
+            words_copy[i].s = s.into();
+        }
+    }
+    words_copy
+}
+
 impl Element for Paragraph {
     fn render(
         &mut self,
@@ -387,14 +400,6 @@ impl Element for Paragraph {
         mut area: render::Area<'_>,
         style: Style,
     ) -> Result<RenderResult, Error> {
-        // let w = area.size().width.0;
-        // area.set_width((0.5 * w as f32).into()); // use 30% of the page width
-        // if self.borders {
-        //     self.borders = false;
-        //     let mut fe = self.clone().framed(LineStyle::new());
-        //     return fe.render(context, area, style);
-        // }
-
         let mut result = RenderResult::default();
 
         self.apply_style(style);
@@ -404,6 +409,7 @@ impl Element for Paragraph {
                 return Ok(result);
             }
             self.words = wrap::Words::new(mem::take(&mut self.text)).collect();
+            self.words = replace_page_number(self.words.clone(), context);
         }
 
         let words = self.words.iter().map(Into::into);
@@ -411,12 +417,14 @@ impl Element for Paragraph {
         let mut wrapper = wrap::Wrapper::new(words, context, area.size().width);
         for (line, delta) in &mut wrapper {
             let width = line.iter().map(|s| s.width(&context.font_cache)).sum();
+            println!("line width: {:?}", width);
             // Calculate the maximum line height
             let metrics = line
                 .iter()
                 .map(|s| s.style.metrics(&context.font_cache))
                 .fold(fonts::Metrics::default(), |max, m| max.max(&m));
             let position = Position::new(self.get_offset(width, area.size().width), 0);
+            println!("line position: {:?}", position);
 
             if let Some(mut section) = area.text_section(&context.font_cache, position, metrics) {
                 for s in line {
@@ -464,7 +472,8 @@ impl Element for Paragraph {
         area: render::Area<'_>,
     ) -> Mm {
         let mut height = Mm::default();
-        let words = wrap::Words::new(self.text.clone()).collect::<Vec<_>>();
+        let mut words = wrap::Words::new(self.text.clone()).collect();
+        words = replace_page_number(words, context);
         let mut wrapper =
             wrap::Wrapper::new(words.iter().map(Into::into), context, area.size().width);
         for (line, _) in &mut wrapper {
