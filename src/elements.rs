@@ -298,6 +298,11 @@ impl Paragraph {
         self.style.set_font_size(size);
     }
 
+    /// Set color
+    pub fn set_color(&mut self, color: style::Color) {
+        self.style.set_color(color);
+    }
+
     /// set font bold
     pub fn set_bold(&mut self) {
         self.style.set_bold();
@@ -417,14 +422,12 @@ impl Element for Paragraph {
         let mut wrapper = wrap::Wrapper::new(words, context, area.size().width);
         for (line, delta) in &mut wrapper {
             let width = line.iter().map(|s| s.width(&context.font_cache)).sum();
-            println!("line width: {:?}", width);
             // Calculate the maximum line height
             let metrics = line
                 .iter()
                 .map(|s| s.style.metrics(&context.font_cache))
                 .fold(fonts::Metrics::default(), |max, m| max.max(&m));
             let position = Position::new(self.get_offset(width, area.size().width), 0);
-            println!("line position: {:?}", position);
 
             if let Some(mut section) = area.text_section(&context.font_cache, position, metrics) {
                 for s in line {
@@ -1381,7 +1384,6 @@ impl CellDecorator for FrameCellDecorator {
                 0.into()
             },
         );
-        println!("in prepareCell, margins: {:?}", margins);
         area.add_margins(margins);
         area
     }
@@ -1419,50 +1421,46 @@ impl CellDecorator for FrameCellDecorator {
 
         let mut total_height = row_height;
 
+        let top_points = vec![
+            Position::new(left, top + line_offset),
+            Position::new(right, top + line_offset),
+        ];
+        // println!("decorateCell, top_points: {:?}", top_points);
         if print_top {
-            area.draw_line(
-                vec![
-                    Position::new(left, top + line_offset),
-                    Position::new(right, top + line_offset),
-                ],
-                self.line_style,
-            );
+            area.draw_line(top_points, self.line_style);
             total_height += self.line_style.thickness();
         }
+        let right_points = vec![
+            Position::new(right - line_offset, top),
+            Position::new(right - line_offset, bottom),
+        ];
+        // println!("decorateCell, right_points: {:?}", right_points);
 
         if print_right {
-            println!(
-                "drawing right line, right: {:?}, bottom: {:?}, top: {:?}, line_offser: {:?}",
-                right, bottom, top, line_offset
-            );
-            area.draw_line(
-                vec![
-                    Position::new(right - line_offset, top),
-                    Position::new(right - line_offset, bottom),
-                ],
-                self.line_style,
-            );
+            // println!(
+            //     "drawing right line, right: {:?}, bottom: {:?}, top: {:?}, line_offser: {:?}",
+            //     right, bottom, top, line_offset
+            // );
+            area.draw_line(right_points, self.line_style);
         }
 
+        let bottom_points = vec![
+            Position::new(left, bottom - line_offset),
+            Position::new(right, bottom - line_offset),
+        ];
+        // println!("decorateCell, bottom_points: {:?}", bottom_points);
         if print_bottom {
-            area.draw_line(
-                vec![
-                    Position::new(left, bottom - line_offset),
-                    Position::new(right, bottom - line_offset),
-                ],
-                self.line_style,
-            );
+            area.draw_line(bottom_points, self.line_style);
             total_height += self.line_style.thickness();
         }
 
+        let left_points = vec![
+            Position::new(left + line_offset, top),
+            Position::new(left + line_offset, bottom),
+        ];
+        // println!("decorateCell, left_points: {:?}", left_points);
         if print_left {
-            area.draw_line(
-                vec![
-                    Position::new(left + line_offset, top),
-                    Position::new(left + line_offset, bottom),
-                ],
-                self.line_style,
-            );
+            area.draw_line(left_points, self.line_style);
         }
 
         if column + 1 == self.num_columns {
@@ -1599,13 +1597,13 @@ type TableHeaderRowCallback = Box<dyn Fn(usize) -> Result<Box<dyn Element>, Erro
 
 impl TableLayout {
     // /// Return column weights
-    // Return column widths
+    ///
     pub fn column_weights(&self) -> Vec<usize> {
         self.column_weights.clone()
     }
 
     // /// Return draw_inner_borders, draw_outer_borders
-    // borders are used to create a clone of table
+    ///
     pub fn borders(&self) -> (bool, bool) {
         (self.draw_inner_borders, self.draw_outer_borders)
     }
@@ -1699,7 +1697,7 @@ impl TableLayout {
         style: Style,
     ) -> Result<RenderResult, Error> {
         let mut result = RenderResult::default();
-        println!("render_row: total area width: {:?}", area.size().width);
+        // println!("render_row: total area width: {:?}", area.size().width);
         let areas = area.split_horizontally(&self.column_weights);
         let cell_areas = if let Some(decorator) = &self.cell_decorator {
             areas
@@ -1721,7 +1719,7 @@ impl TableLayout {
 
         if let Some(decorator) = &mut self.cell_decorator {
             for (i, area) in areas.into_iter().enumerate() {
-                println!("render cell {}, area width {:?}", i, area.size().width);
+                // println!("render cell {}, area width {:?}", i, area.size().width);
                 let height =
                     decorator.decorate_cell(i, self.render_idx, result.has_more, area, row_height);
                 result.size.height = result.size.height.max(height);
