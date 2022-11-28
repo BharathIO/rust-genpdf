@@ -26,7 +26,6 @@ use std::rc;
 use crate::error::{Context as _, Error, ErrorKind};
 use crate::fonts;
 use crate::style::{Color, LineStyle, Style};
-use crate::Context;
 use crate::{Margins, Mm, Position, Size};
 
 #[cfg(feature = "images")]
@@ -518,6 +517,22 @@ impl<'p> Area<'p> {
         self.size.height -= offset.y;
     }
 
+    /// add left x
+    ///
+    pub fn add_left(&mut self, left: Mm) {
+        self.origin.x += left;
+    }
+
+    /// set start y
+    pub fn set_start_y(&mut self, start_y: Mm) {
+        self.origin.y = start_y;
+    }
+
+    /// get start y
+    pub fn get_start_y(&self) -> Mm {
+        self.origin.y
+    }
+
     /// Sets the size of this area.
     pub fn set_size(&mut self, size: impl Into<Size>) {
         self.size = size.into();
@@ -601,12 +616,11 @@ impl<'p> Area<'p> {
         position: Position,
         style: Style,
         s: S,
-        context: &Context,
     ) -> Result<bool, Error> {
         if let Some(mut section) =
             self.text_section(font_cache, position, style.metrics(font_cache))
         {
-            section.print_str(s, style, context)?;
+            section.print_str(s, style)?;
             Ok(true)
         } else {
             Ok(false)
@@ -702,19 +716,8 @@ impl<'f, 'p> TextSection<'f, 'p> {
     /// Prints the given string with the given style.
     ///
     /// The font cache for this text section must contain the PDF font for the given style.
-    pub fn print_str(
-        &mut self,
-        s: impl AsRef<str>,
-        style: Style,
-        context: &Context,
-    ) -> Result<(), Error> {
-        let exp = &"#{page}";
-        let mut s = s.as_ref().to_string();
-        if s.contains(exp) {
-            let page = context.page_number;
-            s = s.replace(exp, &page.to_string());
-        }
-        let s = s.as_str();
+    pub fn print_str(&mut self, s: impl AsRef<str>, style: Style) -> Result<(), Error> {
+        let s = s.as_ref();
         let font = style.font(self.font_cache);
         // Adjust cursor to remove left bearing of the first character of the first string
         if self.is_first {

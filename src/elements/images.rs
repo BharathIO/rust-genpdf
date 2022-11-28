@@ -9,7 +9,7 @@ use std::path;
 use image::GenericImageView;
 
 use crate::error::{Context as _, Error, ErrorKind};
-use crate::{render, style};
+use crate::{render, style, Margins};
 use crate::{Alignment, Context, Element, Mm, Position, RenderResult, Rotation, Scale, Size};
 
 /// An image to embed in the PDF.
@@ -62,9 +62,22 @@ pub struct Image {
 
     /// DPI override if you know better. Defaults to `printpdf`’s default of 300 dpi.
     dpi: Option<f64>,
+    margins: Option<Margins>,
 }
 
 impl Image {
+    /// Creates a new image
+    pub fn new(data: image::DynamicImage) -> Self {
+        Self {
+            data,
+            alignment: Alignment::Left,
+            position: None,
+            scale: Scale::new(1.0, 1.0),
+            rotation: Rotation::from_degrees(0.0),
+            dpi: None,
+            margins: None,
+        }
+    }
     /// Creates a new image from an already loaded image.
     pub fn from_dynamic_image(data: image::DynamicImage) -> Result<Self, Error> {
         if data.color().has_alpha() {
@@ -80,6 +93,7 @@ impl Image {
                 scale: Scale::default(),
                 rotation: Rotation::default(),
                 dpi: None,
+                margins: None,
             })
         }
     }
@@ -116,9 +130,24 @@ impl Image {
         Self::from_image_reader(reader)
     }
 
+    /// from bytes
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, Error> {
+        Self::from_reader(std::io::Cursor::new(bytes))
+    }
+
     /// Translates the image over to position.
     pub fn set_position(&mut self, position: impl Into<Position>) {
         self.position = Some(position.into());
+    }
+
+    /// set margins
+    pub fn set_margins(&mut self, margins: impl Into<Margins>) {
+        self.margins = Some(margins.into());
+    }
+
+    /// get margins
+    pub fn get_margins(&self) -> Option<Margins> {
+        self.margins
     }
 
     /// Translates the image over to position and returns it.
@@ -194,6 +223,18 @@ impl Image {
         self.set_dpi(dpi);
         self
     }
+
+    /// Load image data from given file path
+    pub fn with_file_path<P: AsRef<path::Path>>(mut self, path: P) {
+        match Self::from_path(path) {
+            Ok(image) => {
+                self.data = image.data;
+            }
+            Err(e) => {
+                eprintln!("Error loading image: {}", e);
+            }
+        }
+    }
 }
 
 impl Element for Image {
@@ -231,6 +272,15 @@ impl Element for Image {
         result.has_more = false;
 
         Ok(result)
+    }
+
+    fn get_probable_height(
+        &self,
+        _style: style::Style,
+        _context: &Context,
+        _area: render::Area<'_>,
+    ) -> Mm {
+        self.get_size().height
     }
 }
 

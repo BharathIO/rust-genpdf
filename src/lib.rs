@@ -170,6 +170,7 @@ use derive_more::{
 };
 
 use error::Context as _;
+use style::Style;
 
 /// A length measured in millimeters.
 ///
@@ -574,6 +575,8 @@ pub struct Document {
     creation_date: Option<printpdf::OffsetDateTime>,
     modification_date: Option<printpdf::OffsetDateTime>,
     margins: Option<Margins>,
+    has_header: Option<bool>,
+    has_footer: Option<bool>,
 }
 
 impl Document {
@@ -591,6 +594,8 @@ impl Document {
             creation_date: None,
             modification_date: None,
             margins: None,
+            has_header: None,
+            has_footer: None,
         }
     }
 
@@ -676,6 +681,36 @@ impl Document {
             bottom: bottom.into(),
             left: left.into(),
         });
+    }
+
+    //// header
+    ///
+    pub fn set_has_header(&mut self, has_header: bool) {
+        self.has_header = Some(has_header);
+    }
+
+    //// footer
+    ///
+    pub fn set_has_footer(&mut self, has_footer: bool) {
+        self.has_footer = Some(has_footer);
+    }
+
+    /// get header
+    ///
+    pub fn get_has_header(&self) -> bool {
+        match self.has_header {
+            Some(has_header) => has_header,
+            None => false,
+        }
+    }
+
+    /// get footer
+    ///
+    pub fn get_has_footer(&self) -> bool {
+        match self.has_footer {
+            Some(has_footer) => has_footer,
+            None => false,
+        }
     }
 
     /// get_margins
@@ -769,7 +804,6 @@ impl Document {
     /// For details on the rendering process, see the [Rendering Process section of the crate
     /// documentation](index.html#rendering-process).
     pub fn render_to_file(self, path: impl AsRef<path::Path>) -> Result<(), error::Error> {
-        println!("in rust-genpdf render_to_file");
         let path = path.as_ref();
         let file = fs::File::create(path)
             .with_context(|| format!("Could not create file {}", path.display()))?;
@@ -882,7 +916,6 @@ impl PageDecorator for SimplePageDecorator {
     ) -> Result<render::Area<'a>, error::Error> {
         self.page += 1;
         context.page_number = self.page;
-        println!("in rust-genpdf decorate_page, area.size: {:?}", area.size());
         if let Some(margins) = self.margins {
             area.add_margins(margins);
         }
@@ -890,6 +923,106 @@ impl PageDecorator for SimplePageDecorator {
             let mut element = cb(self.page);
             let result = element.render(context, area.clone(), style)?;
             area.add_offset(Position::new(0, result.size.height));
+        }
+        Ok(area)
+    }
+}
+
+type CustomHeaderCallback = Box<dyn Fn(usize) -> Result<Box<dyn Element>, error::Error>>;
+type CustomFooterCallback = Box<dyn Fn(usize) -> Result<Box<dyn Element>, error::Error>>;
+
+/// Custom header and footer along with margins.
+pub struct CustomPageDecorator {
+    page: usize,
+    margins: Option<Margins>,
+    header_callback_fn: Option<CustomHeaderCallback>,
+    footer_callback_fn: Option<CustomFooterCallback>,
+}
+
+impl CustomPageDecorator {
+    /// Creates a new page decorator that does not modify the page.
+    pub fn new() -> CustomPageDecorator {
+        CustomPageDecorator {
+            page: 0,
+            margins: None,
+            header_callback_fn: None,
+            footer_callback_fn: None,
+        }
+    }
+
+    /// set margins
+    pub fn set_margins(&mut self, margins: Option<Margins>) {
+        self.margins = margins;
+    }
+
+    /// register header callback
+    pub fn register_header_callback_fn<F, E>(&mut self, cb: F)
+    where
+        F: Fn(usize) -> Result<E, error::Error> + 'static,
+        E: Element + 'static,
+    {
+        self.header_callback_fn = Some(Box::new(move |page| cb(page).map(|e| Box::new(e) as _)));
+    }
+
+    /// register footer callback
+    pub fn register_footer_callback_fn<F, E>(&mut self, cb: F)
+    where
+        F: Fn(usize) -> Result<E, error::Error> + 'static,
+        E: Element + 'static,
+    {
+        self.footer_callback_fn = Some(Box::new(move |page| cb(page).map(|e| Box::new(e) as _)));
+    }
+}
+
+impl PageDecorator for CustomPageDecorator {
+    fn decorate_page<'a>(
+        &mut self,
+        context: &mut Context,
+        mut area: render::Area<'a>,
+        style: Style,
+    ) -> Result<render::Area<'a>, error::Error> {
+        self.page += 1;
+        context.page_number = self.page;
+        if let Some(margins) = self.margins {
+            area.add_margins(margins);
+        }
+        // Render Header
+        if let Some(cb) = &self.header_callback_fn {
+            match cb(self.page) {
+                Ok(mut element) => {
+                    let result = element.render(context, area.clone(), style)?;
+                    area.add_offset(Position::new(0, result.size.height));
+                }
+                Err(e) => return Err(e),
+            }
+        }
+
+        // Render Footer
+        let mut footer_area = area.next_layer();
+        if let Some(cb) = &self.footer_callback_fn {
+            match cb(self.page) {
+                Ok(mut element) => {
+                    let height = footer_area.size().height;
+                    let margin_bottom = match self.margins {
+                        Some(margins) => margins.bottom,
+                        None => Mm::from(0),
+                    };
+                    let footer_max_height =
+                        element.get_probable_height(style, context, footer_area.clone());
+                    let footer_height = margin_bottom + footer_max_height.into();
+                    let y_offset = height - footer_height;
+                    footer_area.add_offset(Position::new(0, y_offset));
+                    let footer_el_result = element.render(context, footer_area.clone(), style)?;
+                    let footer_size = footer_el_result.size.height - height;
+                    let height = footer_area.size().height - footer_size;
+                    let mut remaining_area_height = height - footer_height;
+                    if let Some(mr) = self.margins {
+                        remaining_area_height -= mr.top;
+                    }
+                    area.set_height(remaining_area_height);
+                }
+                Err(e) => return Err(e),
+            }
         }
         Ok(area)
     }
@@ -946,6 +1079,14 @@ pub trait Element {
         area: render::Area<'_>,
         style: style::Style,
     ) -> Result<RenderResult, error::Error>;
+
+    /// Returns the probable height of this element.
+    fn get_probable_height(
+        &self,
+        _style: style::Style,
+        context: &Context,
+        area: render::Area<'_>,
+    ) -> Mm;
 
     /// Draws a frame around this element using the given line style.
     fn framed(self, line_style: impl Into<style::LineStyle>) -> elements::FramedElement<Self>
