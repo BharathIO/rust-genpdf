@@ -101,6 +101,7 @@ impl IntoBoxedElement for Box<dyn Element> {
 pub struct LinearLayout {
     elements: Vec<Box<dyn Element>>,
     render_idx: usize,
+    margins: Option<Margins>,
 }
 
 impl LinearLayout {
@@ -108,12 +109,24 @@ impl LinearLayout {
         LinearLayout {
             elements: Vec::new(),
             render_idx: 0,
+            margins: None,
         }
     }
 
     /// Creates a new linear layout that arranges its elements vertically.
     pub fn vertical() -> LinearLayout {
         LinearLayout::new()
+    }
+
+    /// set margins
+    /// margins is the distance between the text and the border
+    pub fn set_margins(&mut self, margins: Margins) {
+        self.margins = Some(margins);
+    }
+
+    /// returns the current margins
+    pub fn get_margins(&self) -> Option<Margins> {
+        self.margins
     }
 
     /// Adds the given element to this layout.
@@ -209,7 +222,6 @@ impl Element for Text {
             Position::default(),
             style,
             &self.text.s,
-            context,
         )? {
             result.size = Size::new(
                 style.str_width(&context.font_cache, &self.text.s),
@@ -431,7 +443,7 @@ impl Element for Paragraph {
 
             if let Some(mut section) = area.text_section(&context.font_cache, position, metrics) {
                 for s in line {
-                    section.print_str(&s.s, s.style, context)?;
+                    section.print_str(&s.s, s.style)?;
                     rendered_len += s.s.len();
                 }
                 rendered_len -= delta;
@@ -1207,7 +1219,6 @@ impl<E: Element> Element for BulletPoint<E> {
                 Position::new(self.indent - bullet_width - self.bullet_space, 0),
                 style,
                 self.bullet.as_str(),
-                context,
             )?;
             self.bullet_rendered = true;
         }
@@ -1591,6 +1602,7 @@ pub struct TableLayout {
     draw_inner_borders: bool,
     draw_outer_borders: bool,
     has_header_row_callback: bool,
+    margins: Option<Margins>,
 }
 
 type TableHeaderRowCallback = Box<dyn Fn(usize) -> Result<Box<dyn Element>, Error>>;
@@ -1632,9 +1644,21 @@ impl TableLayout {
             draw_inner_borders,
             draw_outer_borders,
             has_header_row_callback: false,
+            margins: None,
         };
         set_cell_decorator(&mut tl, draw_inner_borders, draw_outer_borders);
         tl
+    }
+
+    /// set margins
+    /// margins is the distance between the text and the border
+    pub fn set_margins(&mut self, margins: Margins) {
+        self.margins = Some(margins);
+    }
+
+    /// returns the current padding
+    pub fn get_margins(&self) -> Option<Margins> {
+        self.margins
     }
 
     /// get has header row callback

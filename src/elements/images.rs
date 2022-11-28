@@ -9,7 +9,7 @@ use std::path;
 use image::GenericImageView;
 
 use crate::error::{Context as _, Error, ErrorKind};
-use crate::{render, style};
+use crate::{render, style, Margins};
 use crate::{Alignment, Context, Element, Mm, Position, RenderResult, Rotation, Scale, Size};
 
 /// An image to embed in the PDF.
@@ -62,6 +62,7 @@ pub struct Image {
 
     /// DPI override if you know better. Defaults to `printpdf`’s default of 300 dpi.
     dpi: Option<f64>,
+    margins: Option<Margins>,
 }
 
 impl Image {
@@ -74,6 +75,7 @@ impl Image {
             scale: Scale::new(1.0, 1.0),
             rotation: Rotation::from_degrees(0.0),
             dpi: None,
+            margins: None,
         }
     }
     /// Creates a new image from an already loaded image.
@@ -91,6 +93,7 @@ impl Image {
                 scale: Scale::default(),
                 rotation: Rotation::default(),
                 dpi: None,
+                margins: None,
             })
         }
     }
@@ -135,6 +138,16 @@ impl Image {
     /// Translates the image over to position.
     pub fn set_position(&mut self, position: impl Into<Position>) {
         self.position = Some(position.into());
+    }
+
+    /// set margins
+    pub fn set_margins(&mut self, margins: impl Into<Margins>) {
+        self.margins = Some(margins.into());
+    }
+
+    /// get margins
+    pub fn get_margins(&self) -> Option<Margins> {
+        self.margins
     }
 
     /// Translates the image over to position and returns it.
