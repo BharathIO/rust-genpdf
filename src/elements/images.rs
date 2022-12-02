@@ -78,6 +78,13 @@ impl Image {
             margins: None,
         }
     }
+    /// set pixel width, pixel height
+    pub fn set_pixel_size(&mut self, width: u32, height: u32) {
+        self.data = self
+            .data
+            .resize(width, height, image::imageops::FilterType::Nearest);
+    }
+
     /// Creates a new image from an already loaded image.
     pub fn from_dynamic_image(data: image::DynamicImage) -> Result<Self, Error> {
         if data.color().has_alpha() {
