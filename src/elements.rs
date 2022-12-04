@@ -54,6 +54,7 @@ use crate::style;
 use crate::style::{LineStyle, Style, StyledString};
 use crate::wrap;
 use crate::{Alignment, Context, Element, Margins, Mm, Position, RenderResult, Size};
+use printpdf::Px;
 
 #[cfg(feature = "images")]
 pub use images::Image;
@@ -1593,8 +1594,34 @@ impl<'a, E: IntoBoxedElement> iter::Extend<E> for TableLayoutRow<'a> {
 /// [`CellDecorator`]: trait.CellDecorator.html
 /// [`FrameCellDecorator`]: struct.FrameCellDecorator.html
 ///
+#[derive(Clone)]
+pub enum ColumnWidths {
+    /// The columns have the given weights.
+    Weights(Vec<usize>),
+    /// The columns have the given pixel widths.
+    PixelWidths(Vec<Px>),
+}
+
+impl ColumnWidths {
+    /// Returns the number of columns.
+    pub fn len(&self) -> usize {
+        match self {
+            ColumnWidths::Weights(weights) => weights.len(),
+            ColumnWidths::PixelWidths(widths) => widths.len(),
+        }
+    }
+
+    /// Returns size of the total columns.
+    pub fn is_empty(&self) -> bool {
+        match self {
+            ColumnWidths::Weights(weights) => weights.is_empty(),
+            ColumnWidths::PixelWidths(widths) => widths.is_empty(),
+        }
+    }
+}
+/// Table Layout
 pub struct TableLayout {
-    column_weights: Vec<usize>,
+    column_weights: ColumnWidths,
     rows: Vec<Vec<Box<dyn Element>>>,
     render_idx: usize,
     cell_decorator: Option<Box<dyn CellDecorator>>,
@@ -1610,7 +1637,7 @@ type TableHeaderRowCallback = Box<dyn Fn(usize) -> Result<Box<dyn Element>, Erro
 impl TableLayout {
     // /// Return column weights
     ///
-    pub fn column_weights(&self) -> Vec<usize> {
+    pub fn column_weights(&self) -> ColumnWidths {
         self.column_weights.clone()
     }
 
@@ -1622,7 +1649,7 @@ impl TableLayout {
 
     /// Creates a new table layout with the given column weights.
     ///
-    pub fn new(column_weights: Vec<usize>) -> Self {
+    pub fn new(column_weights: ColumnWidths) -> Self {
         TableLayout::new_with_borders(column_weights, false, false)
     }
 
@@ -1631,7 +1658,7 @@ impl TableLayout {
     /// The column weights are used to determine the relative width of the columns.  The number of
     /// column weights determines the number of columns in the table.
     pub fn new_with_borders(
-        column_weights: Vec<usize>,
+        column_weights: ColumnWidths,
         draw_inner_borders: bool,
         draw_outer_borders: bool,
     ) -> TableLayout {

@@ -23,6 +23,9 @@ use std::io;
 use std::ops;
 use std::rc;
 
+use printpdf::Px;
+
+use crate::elements::ColumnWidths;
 use crate::error::{Context as _, Error, ErrorKind};
 use crate::fonts;
 use crate::style::{Color, LineStyle, Style};
@@ -548,12 +551,20 @@ impl<'p> Area<'p> {
         self.size.height = height;
     }
 
+    /// Splits this area horizontally using the given weights/pixels.
+    pub fn split_horizontally(&self, weights: &ColumnWidths) -> Vec<Area<'p>> {
+        match weights {
+            ColumnWidths::Weights(weights) => self.split_horizontally_by_weights(weights),
+            ColumnWidths::PixelWidths(widths) => self.split_horizontally_by_pixels(widths),
+        }
+    }
+
     /// Splits this area horizontally using the given weights.
     ///
     /// The returned vector has the same number of elements as the provided slice.  The width of
     /// the *i*-th area is *width \* weights[i] / total_weight*, where *width* is the width of this
     /// area, and *total_weight* is the sum of all given weights.
-    pub fn split_horizontally(&self, weights: &[usize]) -> Vec<Area<'p>> {
+    fn split_horizontally_by_weights(&self, weights: &[usize]) -> Vec<Area<'p>> {
         let total_weight: usize = weights.iter().sum();
         let factor = self.size.width / total_weight as f64;
         let widths = weights.iter().map(|weight| factor * *weight as f64);
@@ -565,6 +576,24 @@ impl<'p> Area<'p> {
             area.size.width = width;
             areas.push(area);
             offset += width;
+        }
+        areas
+    }
+
+    /// Splits this area horizontally using the given pixel weights.
+    ///
+    /// The returned vector has the same number of elements as the provided slice.  The width of
+    /// the *i*-th area is *width \* weights[i] / total_weight*, where *width* is the width of this
+    /// area, and *total_weight* is the sum of all given weights.
+    fn split_horizontally_by_pixels(&self, widths: &[Px]) -> Vec<Area<'p>> {
+        let mut offset = Mm(0.0);
+        let mut areas = Vec::new();
+        for width in widths {
+            let mut area = self.clone();
+            area.origin.x += offset;
+            area.size.width = Mm::from(width.0 as f64);
+            areas.push(area);
+            offset += Mm::from(width.0 as f64);
         }
         areas
     }
