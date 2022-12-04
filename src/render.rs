@@ -23,8 +23,6 @@ use std::io;
 use std::ops;
 use std::rc;
 
-use printpdf::Px;
-
 use crate::elements::ColumnWidths;
 use crate::error::{Context as _, Error, ErrorKind};
 use crate::fonts;
@@ -585,15 +583,15 @@ impl<'p> Area<'p> {
     /// The returned vector has the same number of elements as the provided slice.  The width of
     /// the *i*-th area is *width \* weights[i] / total_weight*, where *width* is the width of this
     /// area, and *total_weight* is the sum of all given weights.
-    fn split_horizontally_by_pixels(&self, widths: &[Px]) -> Vec<Area<'p>> {
+    fn split_horizontally_by_pixels(&self, widths: &[f64]) -> Vec<Area<'p>> {
         let mut offset = Mm(0.0);
         let mut areas = Vec::new();
         for width in widths {
             let mut area = self.clone();
             area.origin.x += offset;
-            area.size.width = Mm::from(width.0 as f64);
+            area.size.width = Mm::from(*width);
             areas.push(area);
-            offset += Mm::from(width.0 as f64);
+            offset += Mm::from(*width);
         }
         areas
     }

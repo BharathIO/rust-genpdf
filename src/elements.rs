@@ -54,7 +54,6 @@ use crate::style;
 use crate::style::{LineStyle, Style, StyledString};
 use crate::wrap;
 use crate::{Alignment, Context, Element, Margins, Mm, Position, RenderResult, Size};
-use printpdf::Px;
 
 #[cfg(feature = "images")]
 pub use images::Image;
@@ -1599,7 +1598,7 @@ pub enum ColumnWidths {
     /// The columns have the given weights.
     Weights(Vec<usize>),
     /// The columns have the given pixel widths.
-    PixelWidths(Vec<Px>),
+    PixelWidths(Vec<f64>),
 }
 
 impl ColumnWidths {
