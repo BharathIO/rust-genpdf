@@ -462,7 +462,6 @@ impl Element for Paragraph {
                 result.has_more = true;
                 break;
             }
-            // println!("metrics.line_height = {:?}", metrics.line_height);
             result.size = result
                 .size
                 .stack_vertical(Size::new(width, metrics.line_height));
@@ -1825,6 +1824,7 @@ impl Element for TableLayout {
             return Ok(result);
         }
         if let Some(margins) = self.margins {
+            result.size.height += margins.top;
             area.add_margins(margins);
         }
         if let Some(decorator) = &mut self.cell_decorator {
@@ -1832,7 +1832,7 @@ impl Element for TableLayout {
         }
         result.size.width = area.size().width;
 
-        // render header
+        // render table header row using callback function
         if let Some(cb) = &self.header_row_callback_fn {
             let rr = match cb(context.page_number) {
                 Ok(v) => Ok(v),
@@ -1840,8 +1840,9 @@ impl Element for TableLayout {
             };
             match rr {
                 Ok(mut element) => {
-                    let result = element.render(context, area.clone(), style)?;
-                    area.add_offset(Position::new(0, result.size.height));
+                    let header_result = element.render(context, area.clone(), style)?;
+                    result.size.height += header_result.size.height;
+                    area.add_offset(Position::new(0, header_result.size.height));
                 }
                 Err(e) => {
                     return Err(e);

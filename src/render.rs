@@ -475,6 +475,7 @@ pub struct Area<'p> {
 
 impl<'p> Area<'p> {
     fn new(layer: Layer<'p>, origin: Position, size: Size) -> Area<'p> {
+        println!("new area: y {:?}", origin.y);
         Area {
             layer,
             origin,
@@ -524,13 +525,13 @@ impl<'p> Area<'p> {
         self.origin.x += left;
     }
 
-    /// set start y
-    pub fn set_start_y(&mut self, start_y: Mm) {
-        self.origin.y = start_y;
+    /// get start x
+    pub fn start_x(&self) -> Mm {
+        self.origin.x
     }
 
     /// get start y
-    pub fn get_start_y(&self) -> Mm {
+    pub fn start_y(&self) -> Mm {
         self.origin.y
     }
 

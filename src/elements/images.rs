@@ -275,6 +275,10 @@ impl Element for Image {
         // (0,0) when it was rotated in any way.
         position += bb_origin;
 
+        if let Some(margins) = self.margins {
+            result.size.height += margins.top;
+        }
+
         // Insert/render the image with the overridden/calculated position.
         area.add_image(&self.data, position, self.scale, self.rotation, self.dpi);
 
