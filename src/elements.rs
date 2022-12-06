@@ -320,6 +320,11 @@ impl Paragraph {
         self.style.set_bold();
     }
 
+    /// set font italic
+    pub fn set_italic(&mut self) {
+        self.style.set_italic();
+    }
+
     /// set borders
     pub fn set_borders(&mut self, borders: bool) {
         self.borders = borders;
@@ -1615,6 +1620,20 @@ impl ColumnWidths {
         match self {
             ColumnWidths::Weights(weights) => weights.is_empty(),
             ColumnWidths::PixelWidths(widths) => widths.is_empty(),
+        }
+    }
+
+    /// to_vec
+    pub fn to_vec(&self) -> Vec<f64> {
+        match self {
+            ColumnWidths::Weights(weights) => {
+                let mut widths = Vec::new();
+                for i in 0..weights.len() {
+                    widths.push(weights[i] as f64);
+                }
+                widths
+            }
+            ColumnWidths::PixelWidths(widths) => widths.clone(),
         }
     }
 }
