@@ -248,10 +248,15 @@ impl Element for Image {
     fn render(
         &mut self,
         _context: &Context,
-        area: render::Area<'_>,
+        mut area: render::Area<'_>,
         _style: style::Style,
     ) -> Result<RenderResult, Error> {
         let mut result = RenderResult::default();
+
+        if let Some(margins) = self.margins {
+            area.add_margins(margins);
+        }
+
         let true_size = self.get_size();
         let (bb_origin, bb_size) = bounding_box_offset_and_size(&self.rotation, &true_size);
 

@@ -147,6 +147,9 @@ impl LinearLayout {
         style: Style,
     ) -> Result<RenderResult, Error> {
         let mut result = RenderResult::default();
+        if let Some(margins) = self.margins {
+            area.add_margins(margins);
+        }
         while area.size().height > Mm(0.0) && self.render_idx < self.elements.len() {
             let element_result =
                 self.elements[self.render_idx].render(context, area.clone(), style)?;
@@ -423,7 +426,6 @@ impl Element for Paragraph {
         style: Style,
     ) -> Result<RenderResult, Error> {
         let mut result = RenderResult::default();
-
         self.apply_style(style);
 
         if self.words.is_empty() {
@@ -432,6 +434,10 @@ impl Element for Paragraph {
             }
             self.words = wrap::Words::new(mem::take(&mut self.text)).collect();
             self.words = replace_page_number(self.words.clone(), context);
+        }
+
+        if let Some(margins) = self.margins {
+            area.add_margins(margins);
         }
 
         let words = self.words.iter().map(Into::into);
@@ -1817,6 +1823,9 @@ impl Element for TableLayout {
         let mut result = RenderResult::default();
         if self.column_weights.is_empty() {
             return Ok(result);
+        }
+        if let Some(margins) = self.margins {
+            area.add_margins(margins);
         }
         if let Some(decorator) = &mut self.cell_decorator {
             decorator.set_table_size(self.column_weights.len(), self.rows.len());
