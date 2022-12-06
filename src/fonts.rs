@@ -497,6 +497,16 @@ fn from_file(
     )
 }
 
+fn from_file_name(
+    dir: impl AsRef<path::Path>,
+    name: &str,
+    style: FontStyle,
+    builtin: Option<Builtin>,
+) -> Result<FontData, Error> {
+    let builtin = builtin.map(|b| b.style(style));
+    FontData::load(&dir.as_ref().join(format!("{}.ttf", name)), builtin)
+}
+
 /// Loads the font family at the given path with the given name.
 ///
 /// This method assumes that at the given path, these files exist and are valid font files:
@@ -519,6 +529,37 @@ pub fn from_files(
         bold: from_file(dir, name, FontStyle::Bold, builtin)?,
         italic: from_file(dir, name, FontStyle::Italic, builtin)?,
         bold_italic: from_file(dir, name, FontStyle::BoldItalic, builtin)?,
+    })
+}
+
+/// Loads the font family at the given path with the given name.
+///
+/// This method assumes that at the given path, these files exist and are valid font files:
+/// - `{name}-Regular.ttf`
+/// - `{name}-Bold.ttf`
+/// - `{name}-Italic.ttf`
+/// - `{name}-BoldItalic.ttf`
+///
+/// If `builtin` is set, built-in PDF fonts are used instead of embedding the fonts in the PDF file
+/// (see the [module documentation](index.html) for more information).  In this case, the given
+/// fonts must be metrically identical to the built-in fonts.
+pub fn from_file_names(
+    dir: impl AsRef<path::Path>,
+    mut names: Vec<&str>,
+    builtin: Option<Builtin>,
+) -> Result<FontFamily<FontData>, Error> {
+    if names.len() != 4 {
+        return Err(Error::new(
+            format!("Expected 4 font names, but got {}", names.len()),
+            ErrorKind::InvalidFont,
+        ));
+    }
+    let dir = dir.as_ref();
+    Ok(FontFamily {
+        regular: from_file_name(dir, names.remove(0), FontStyle::Regular, builtin)?,
+        bold: from_file_name(dir, names.remove(0), FontStyle::Bold, builtin)?,
+        italic: from_file_name(dir, names.remove(0), FontStyle::Italic, builtin)?,
+        bold_italic: from_file_name(dir, names.remove(0), FontStyle::BoldItalic, builtin)?,
     })
 }
 
