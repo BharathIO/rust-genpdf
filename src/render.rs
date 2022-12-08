@@ -359,13 +359,15 @@ impl<'p> Layer<'p> {
             is_clipping_path: false,
         };
         let fill_color = printpdf::Color::Cmyk(printpdf::Cmyk::new(0.0, 0.23, 0.0, 0.0, None));
+        let blue_color = printpdf::Color::Rgb(printpdf::Rgb::new(0.0, 0.0, 255.0, None));
+        let black_color = printpdf::Color::Rgb(printpdf::Rgb::new(0.0, 0.0, 0.0, None));
+
         self.data.layer.set_fill_color(fill_color.clone());
-        self.data.layer.set_outline_color(fill_color.clone());
+        self.data.layer.set_outline_color(black_color.clone());
         self.data.layer.set_outline_thickness(2.0);
         self.data.layer.add_shape(line);
 
         // reset to default
-        let black_color = printpdf::Color::Rgb(printpdf::Rgb::new(0.0, 0.0, 0.0, None));
         self.data.layer.set_fill_color(black_color);
     }
 
