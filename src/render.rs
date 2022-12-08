@@ -350,14 +350,23 @@ impl<'p> Layer<'p> {
             .into_iter()
             .map(|pos| (self.transform_position(pos).into(), false))
             .collect();
+        println!("line_points = {:?}", line_points);
         let line = printpdf::Line {
             points: line_points,
-            is_closed: false,
-            has_fill: false,
+            is_closed: true,
+            has_fill: true,
             has_stroke: true,
             is_clipping_path: false,
         };
+        let fill_color = printpdf::Color::Cmyk(printpdf::Cmyk::new(0.0, 0.23, 0.0, 0.0, None));
+        self.data.layer.set_fill_color(fill_color.clone());
+        self.data.layer.set_outline_color(fill_color.clone());
+        self.data.layer.set_outline_thickness(2.0);
         self.data.layer.add_shape(line);
+
+        // reset to default
+        let black_color = printpdf::Color::Rgb(printpdf::Rgb::new(0.0, 0.0, 0.0, None));
+        self.data.layer.set_fill_color(black_color);
     }
 
     fn set_fill_color(&self, color: Option<Color>) {
@@ -475,7 +484,7 @@ pub struct Area<'p> {
 
 impl<'p> Area<'p> {
     fn new(layer: Layer<'p>, origin: Position, size: Size) -> Area<'p> {
-        println!("new area: y {:?}", origin.y);
+        // println!("new area: y {:?}", origin.y);
         Area {
             layer,
             origin,
