@@ -645,6 +645,11 @@ impl Document {
         self.style.set_font_size(font_size);
     }
 
+    /// Sets the default font color for this document.
+    pub fn set_font_color(&mut self, font_color: style::Color) {
+        self.style.set_color(font_color);
+    }
+
     /// Sets the default line spacing factor for this document.
     ///
     /// If this method is not called, the default value of 1 is used.

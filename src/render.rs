@@ -371,15 +371,17 @@ impl<'p> Layer<'p> {
         self.data.layer.add_shape(line);
 
         // reset to default font color to black
-        self.data.layer.set_fill_color(black_color.into());
+        // self.data.layer.set_fill_color(black_color.into());
+        // self.data.layer.upda
     }
 
     fn set_fill_color(&self, color: Option<Color>) {
-        if self.data.update_fill_color(color) {
-            self.data
-                .layer
-                .set_fill_color(color.unwrap_or(Color::Rgb(0, 0, 0)).into());
-        }
+        // TODO: this is not working
+        // if self.data.update_fill_color(color) {
+        self.data
+            .layer
+            .set_fill_color(color.unwrap_or(Color::Rgb(0, 0, 0)).into());
+        // }
     }
 
     fn set_outline_thickness(&self, thickness: Mm) {
@@ -791,6 +793,7 @@ impl<'f, 'p> TextSection<'f, 'p> {
             .font_cache
             .get_pdf_font(font)
             .expect("Could not find PDF font in font cache");
+        println!("data {}, filling with color: {:?}", s, style.color());
         self.area.layer.set_fill_color(style.color());
         self.set_font(font, style.font_size());
 

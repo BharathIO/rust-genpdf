@@ -51,6 +51,7 @@ use crate::error::{Error, ErrorKind};
 use crate::fonts;
 use crate::render;
 use crate::style;
+use crate::style::get_color;
 use crate::style::BLACK;
 use crate::style::{LineStyle, Style, StyledString};
 use crate::wrap;
@@ -456,6 +457,7 @@ impl Element for Paragraph {
 
             if let Some(mut section) = area.text_section(&context.font_cache, position, metrics) {
                 for s in line {
+                    println!("Paragraph::render, s.style: {:?}", s.style);
                     section.print_str(&s.s, s.style)?;
                     rendered_len += s.s.len();
                 }
@@ -1849,7 +1851,7 @@ impl TableLayout {
                     i,
                     self.render_idx,
                     result.has_more,
-                    area,
+                    area.clone(),
                     row_probable_height,
                     bg_color,
                 );
@@ -1857,6 +1859,7 @@ impl TableLayout {
             }
         }
 
+        println!("in render_row, style: {:?}", style);
         let mut row_height = Mm::from(0);
         for (area, element) in cell_areas.iter().zip(self.rows[self.render_idx].iter_mut()) {
             let element_result = element.element.render(context, area.clone(), style)?;
