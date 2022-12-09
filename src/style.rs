@@ -57,6 +57,46 @@ pub enum Color {
     Greyscale(u8),
 }
 
+/// RGB RED
+pub const RED: Color = Color::Rgb(255, 0, 0);
+/// RGB GREEN
+pub const GREEN: Color = Color::Rgb(0, 255, 0);
+/// RGB BLUE
+pub const BLUE: Color = Color::Rgb(0, 0, 255);
+/// CMYK CYAN
+pub const CYAN: Color = Color::Cmyk(255, 0, 0, 0);
+/// CMYK MAGENTA
+pub const MAGENTA: Color = Color::Cmyk(0, 255, 0, 0);
+/// CMYK YELLOW
+pub const YELLOW: Color = Color::Cmyk(0, 0, 255, 0);
+/// CMYK BLACK
+pub const BLACK: Color = Color::Cmyk(0, 0, 0, 255);
+/// CMYK WHITE
+pub const WHITE: Color = Color::Cmyk(0, 0, 0, 0);
+/// CMYK PINK
+pub const PINK: Color = Color::Cmyk(0, 255, 255, 0);
+/// RGB PINK
+pub const PINK_RGB: Color = Color::Rgb(255, 192, 203);
+/// GREYSCALE
+pub const GREY: Color = Color::Greyscale(127);
+
+/// get a color from a string
+pub fn get_color(name: &str) -> Option<Color> {
+    match name {
+        "red" => Some(RED),
+        "green" => Some(GREEN),
+        "blue" => Some(BLUE),
+        "cyan" => Some(CYAN),
+        "magenta" => Some(MAGENTA),
+        "yellow" => Some(YELLOW),
+        "pink" => Some(PINK_RGB),
+        "black" => Some(BLACK),
+        "white" => Some(WHITE),
+        "grey" => Some(GREY),
+        _ => None,
+    }
+}
+
 impl From<Color> for printpdf::Color {
     fn from(color: Color) -> printpdf::Color {
         match color {
@@ -563,8 +603,9 @@ impl<'s> From<StyledString> for StyledCow<'s> {
 /// [`Color`]: enum.Color.html
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LineStyle {
-    thickness: Mm,
-    color: Color,
+    pub thickness: Mm,
+    pub color: Color,
+    pub bg_color: Option<Color>,
 }
 
 impl Default for LineStyle {
@@ -572,6 +613,7 @@ impl Default for LineStyle {
         LineStyle {
             thickness: Mm::from(0.1),
             color: Color::Rgb(0, 0, 0),
+            bg_color: None,
         }
     }
 }

@@ -26,7 +26,8 @@ use std::rc;
 use crate::elements::ColumnWidths;
 use crate::error::{Context as _, Error, ErrorKind};
 use crate::fonts;
-use crate::style::{Color, LineStyle, Style};
+use crate::style::get_color;
+use crate::style::{Color, LineStyle, Style, BLACK};
 use crate::{Margins, Mm, Position, Size};
 
 #[cfg(feature = "images")]
@@ -342,7 +343,7 @@ impl<'p> Layer<'p> {
         );
     }
 
-    fn add_line_shape<I>(&self, points: I)
+    fn add_line_shape<I>(&self, points: I, bg_color: Option<Color>)
     where
         I: IntoIterator<Item = LayerPosition>,
     {
@@ -358,17 +359,19 @@ impl<'p> Layer<'p> {
             has_stroke: true,
             is_clipping_path: false,
         };
-        let fill_color = printpdf::Color::Cmyk(printpdf::Cmyk::new(0.0, 0.23, 0.0, 0.0, None));
-        let blue_color = printpdf::Color::Rgb(printpdf::Rgb::new(0.0, 0.0, 255.0, None));
-        let black_color = printpdf::Color::Rgb(printpdf::Rgb::new(0.0, 0.0, 0.0, None));
+        // let fill_color = printpdf::Color::Cmyk(printpdf::Cmyk::new(0.0, 0.23, 0.0, 0.0, None));
+        // let blue_color = printpdf::Color::Rgb(printpdf::Rgb::new(0.0, 0.0, 255.0, None));
+        let black_color = BLACK;
 
-        self.data.layer.set_fill_color(fill_color.clone());
-        self.data.layer.set_outline_color(black_color.clone());
-        self.data.layer.set_outline_thickness(2.0);
+        if let Some(color) = bg_color {
+            self.data.layer.set_fill_color(color.clone().into());
+            // self.data.layer.set_outline_color(color.clone().into());
+            // self.data.layer.set_outline_thickness(2.0);
+        }
         self.data.layer.add_shape(line);
 
-        // reset to default
-        self.data.layer.set_fill_color(black_color);
+        // reset to default font color to black
+        self.data.layer.set_fill_color(black_color.into());
     }
 
     fn set_fill_color(&self, color: Option<Color>) {
@@ -638,10 +641,12 @@ impl<'p> Area<'p> {
     where
         I: IntoIterator<Item = Position>,
     {
-        self.layer.set_outline_thickness(line_style.thickness());
-        self.layer.set_outline_color(line_style.color());
-        self.layer
-            .add_line_shape(points.into_iter().map(|pos| self.position(pos)));
+        // self.layer.set_outline_thickness(line_style.thickness());
+        // self.layer.set_outline_color(line_style.color());
+        self.layer.add_line_shape(
+            points.into_iter().map(|pos| self.position(pos)),
+            line_style.bg_color,
+        );
     }
 
     /// Tries to draw the given string at the given position and returns `true` if the area was
