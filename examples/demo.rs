@@ -16,10 +16,12 @@
 use std::env;
 use std::path::PathBuf;
 
+use genpdf::elements::TableLayout;
 use genpdf::error::Error;
 use genpdf::fonts::from_files;
 use genpdf::fonts::FontData;
 use genpdf::fonts::FontFamily;
+use genpdf::style::get_color;
 use genpdf::Alignment;
 use genpdf::Element as _;
 use genpdf::{elements, style};
@@ -32,6 +34,9 @@ const LOREM_IPSUM: &'static str =
     laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in \
     voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat \
     non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
+
+// const LOREM_IPSUM: &'static str =
+//     "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut";
 
 fn get_default_font_dir() -> PathBuf {
     let mut font_dir = PathBuf::new();
@@ -91,7 +96,7 @@ fn main() {
     let mut doc = genpdf::Document::new(default_font);
     doc.set_title("genpdf Demo Document");
     doc.set_minimal_conformance();
-    doc.set_line_spacing(1.25);
+    // doc.set_line_spacing(1.5);
 
     let mut decorator = genpdf::SimplePageDecorator::new();
     decorator.set_margins(10);
@@ -244,30 +249,34 @@ fn main() {
 
     doc.push(elements::Paragraph::new("Here is an example table:"));
 
-    let mut table = elements::TableLayout::new(vec![1, 2]);
-    table.set_cell_decorator(elements::FrameCellDecorator::new(true, false, false));
+    let mut table =
+        elements::TableLayout::new(elements::ColumnWidths::PixelWidths(vec![30.0, 100.0]));
+    table.set_cell_decorator(elements::FrameCellDecorator::new(true, true, true));
     table
         .row()
-        .element(
+        .cell(
             elements::Paragraph::new("Header 1")
                 .styled(style::Effect::Bold)
                 .padded(1),
+            None,
         )
-        .element(elements::Paragraph::new("Value 2").padded(1))
+        .cell(elements::Paragraph::new("Value 2").padded(1), None)
         .push()
         .expect("Invalid table row");
     table
         .row()
-        .element(
+        .cell(
             elements::Paragraph::new("Header 2")
                 .styled(style::Effect::Bold)
                 .padded(1),
+            None,
         )
-        .element(
+        .cell(
             elements::Paragraph::new(
                 "A long paragraph to demonstrate how wrapping works in tables.  Nice, right?",
             )
             .padded(1),
+            None,
         )
         .push()
         .expect("Invalid table row");
@@ -286,12 +295,13 @@ fn main() {
         );
     table
         .row()
-        .element(
+        .cell(
             elements::Paragraph::new("Header 3")
                 .styled(style::Effect::Bold)
                 .padded(1),
+            None,
         )
-        .element(list_layout.padded(1))
+        .cell(list_layout.padded(1), get_color(style::ColorName::GREY))
         .push()
         .expect("Invalid table row");
     doc.push(table);
@@ -301,27 +311,52 @@ fn main() {
         "Now let’s print a long table to demonstrate how page wrapping works:",
     ));
 
-    let mut table = elements::TableLayout::new(vec![1, 5]);
-    table.set_cell_decorator(elements::FrameCellDecorator::new(true, true, false));
+    let mut table =
+        elements::TableLayout::new(elements::ColumnWidths::PixelWidths(vec![50.0, 120.0]));
+    table.set_cell_decorator(elements::FrameCellDecorator::new(true, true, true));
+
+    table.register_header_row_callback_fn(|_| {
+        let mut ht =
+            elements::TableLayout::new(elements::ColumnWidths::PixelWidths(vec![50.0, 120.0]));
+        ht.set_cell_decorator(elements::FrameCellDecorator::new(true, true, true));
+
+        if let Some(color) = get_color(style::ColorName::GREY) {
+            let mut hc1 = elements::Paragraph::new("Header Cell 1");
+            hc1.set_bold();
+            hc1.set_margins(2.into());
+            let mut hc2 = elements::Paragraph::new("Header Cell 2");
+            hc2.set_bold();
+            hc2.set_margins(2.into());
+            let hr = ht.row().cell(hc1, Some(color)).cell(hc2, Some(color));
+            hr.push().expect("Invalid table row");
+        }
+
+        Ok(ht)
+    });
+
+    table.set_has_header_row_callback(true);
+
+    let c2 = elements::Paragraph::new("Value");
+    // if let Some(white) = get_color(style::ColorName::WHITE) {
+    //     c2.set_color(white);
+    // }
+
     table
         .row()
-        .element(
+        .cell(
             elements::Paragraph::new("Index")
                 .styled(style::Effect::Bold)
                 .padded(1),
+            None,
         )
-        .element(
-            elements::Paragraph::new("Text")
-                .styled(style::Effect::Bold)
-                .padded(1),
-        )
+        .cell(c2, None)
         .push()
         .expect("Invalid table row");
     for i in 0..10 {
         table
             .row()
-            .element(elements::Paragraph::new(format!("#{}", i)).padded(1))
-            .element(elements::Paragraph::new(LOREM_IPSUM).padded(1))
+            .cell(elements::Paragraph::new(format!("#{}", i)).padded(1), None)
+            .cell(elements::Paragraph::new(LOREM_IPSUM).padded(1), None)
             .push()
             .expect("Invalid table row");
     }
@@ -330,6 +365,7 @@ fn main() {
 
     doc.render_to_file(output_file)
         .expect("Failed to write output file");
+    println!("PDF saved to  {}", output_file);
 }
 
 fn get_header_widget() -> elements::StyledElement<elements::LinearLayout> {
