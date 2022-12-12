@@ -360,6 +360,25 @@ impl<'p> Layer<'p> {
         self.data.layer.add_shape(line);
     }
 
+    fn draw_filled_shape<I>(&self, points: I, color: Option<Color>)
+    where
+        I: IntoIterator<Item = LayerPosition>,
+    {
+        self.set_fill_color(color);
+        let line_points: Vec<_> = points
+            .into_iter()
+            .map(|pos| (self.transform_position(pos).into(), false))
+            .collect();
+        let line = printpdf::Line {
+            points: line_points,
+            is_closed: true,
+            has_fill: true,
+            has_stroke: true,
+            is_clipping_path: false,
+        };
+        self.data.layer.add_shape(line);
+    }
+
     fn set_fill_color(&self, color: Option<Color>) {
         if self.data.update_fill_color(color) {
             self.data
@@ -631,6 +650,17 @@ impl<'p> Area<'p> {
         self.layer.set_outline_color(line_style.color());
         self.layer
             .add_line_shape(points.into_iter().map(|pos| self.position(pos)));
+    }
+
+    /// Draws a line with the given points and the given line style.
+    ///
+    /// The points are relative to the upper left corner of the area.
+    pub fn draw_filled_shape<I>(&self, points: I, color: Option<Color>)
+    where
+        I: IntoIterator<Item = Position>,
+    {
+        self.layer
+            .draw_filled_shape(points.into_iter().map(|pos| self.position(pos)), color);
     }
 
     /// Tries to draw the given string at the given position and returns `true` if the area was

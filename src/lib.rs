@@ -1082,7 +1082,7 @@ pub trait Element {
 
     /// Returns the probable height of this element.
     fn get_probable_height(
-        &self,
+        &mut self,
         _style: style::Style,
         context: &Context,
         area: render::Area<'_>,
