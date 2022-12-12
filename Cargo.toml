@@ -33,9 +33,12 @@ optional = true
 version = "0.8"
 optional = true
 
+# [dependencies.printpdf]
+# version = "0.3.4"
+# default-features = false
+
 [dependencies.printpdf]
-version = "0.3.4"
-default-features = false
+path="/Users/bharath/Work/GitHub/printpdf/"
 
 [dependencies.derive_more]
 version = "0.99"
