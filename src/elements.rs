@@ -1561,6 +1561,16 @@ pub struct TableCell {
     background_color: Option<style::Color>,
 }
 
+impl TableCell {
+    /// new
+    pub fn new(element: Box<dyn Element>, background_color: Option<style::Color>) -> TableCell {
+        TableCell {
+            element,
+            background_color,
+        }
+    }
+}
+
 impl<'a> TableLayoutRow<'a> {
     fn new(table_layout: &'a mut TableLayout) -> TableLayoutRow<'a> {
         TableLayoutRow {

@@ -120,6 +120,24 @@ pub fn get_color(name: ColorName) -> Option<Color> {
     }
 }
 
+impl From<&str> for ColorName {
+    fn from(x: &str) -> ColorName {
+        match x.to_uppercase().as_str() {
+            "RED" => ColorName::RED,
+            "GREEN" => ColorName::GREEN,
+            "BLUE" => ColorName::BLUE,
+            "CYAN" => ColorName::CYAN,
+            "MAGENTA" => ColorName::MAGENTA,
+            "YELLOW" => ColorName::YELLOW,
+            "PINK" => ColorName::PINK,
+            "BLACK" => ColorName::BLACK,
+            "WHITE" => ColorName::WHITE,
+            "GREY" => ColorName::GREY,
+            _ => ColorName::BLACK,
+        }
+    }
+}
+
 impl From<Color> for printpdf::Color {
     fn from(color: Color) -> printpdf::Color {
         match color {
