@@ -363,25 +363,20 @@ impl<'p> Layer<'p> {
         // let blue_color = printpdf::Color::Rgb(printpdf::Rgb::new(0.0, 0.0, 255.0, None));
         let black_color = BLACK;
 
-        if let Some(color) = bg_color {
-            self.data.layer.set_fill_color(color.clone().into());
-            // self.data.layer.set_outline_color(color.clone().into());
-            // self.data.layer.set_outline_thickness(2.0);
-        }
-        self.data.layer.add_shape(line);
+        self.set_fill_color(bg_color.clone().into());
 
-        // reset to default font color to black
-        // self.data.layer.set_fill_color(black_color.into());
-        // self.data.layer.upda
+        // self.data.layer.set_outline_color(color.clone().into());
+        // self.data.layer.set_outline_thickness(2.0);
+        self.data.layer.add_shape(line);
     }
 
     fn set_fill_color(&self, color: Option<Color>) {
         // TODO: this is not working
-        // if self.data.update_fill_color(color) {
-        self.data
-            .layer
-            .set_fill_color(color.unwrap_or(Color::Rgb(0, 0, 0)).into());
-        // }
+        if self.data.update_fill_color(color) {
+            self.data
+                .layer
+                .set_fill_color(color.unwrap_or(Color::Rgb(0, 0, 0)).into());
+        }
     }
 
     fn set_outline_thickness(&self, thickness: Mm) {
@@ -643,6 +638,7 @@ impl<'p> Area<'p> {
     where
         I: IntoIterator<Item = Position>,
     {
+        // self.layer.data
         // self.layer.set_outline_thickness(line_style.thickness());
         // self.layer.set_outline_color(line_style.color());
         self.layer.add_line_shape(
