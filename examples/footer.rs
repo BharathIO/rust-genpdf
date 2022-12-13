@@ -16,17 +16,22 @@ fn main() -> Result<(), Error> {
     let output_file = "footer.pdf";
 
     let mut footer_table = TableLayout::new_with_borders(
-        genpdf::elements::ColumnWidths::PixelWidths(vec![190.0]),
+        genpdf::elements::ColumnWidths::PixelWidths(vec![95.0, 95.0]),
         true,
         true,
     );
 
-    let mut p = Paragraph::new("Page Footer #{page}");
+    let mut p = Paragraph::new("1 Footer #{page}");
     p.set_bold();
     p.set_alignment(genpdf::Alignment::Center);
+
+    let mut p2 = Paragraph::new("2 Footer #{page}");
+    p2.set_bold();
+    p2.set_alignment(genpdf::Alignment::Center);
     footer_table
         .row()
         .cell(p, get_color(genpdf::style::ColorName::GREY))
+        .cell(p2, get_color(genpdf::style::ColorName::GREY))
         .push()?;
     footer_table.set_margins(Margins::trbl(2.0, 0.0, 0.0, 0.0));
     doc.push(footer_table);

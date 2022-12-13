@@ -1408,6 +1408,8 @@ impl CellDecorator for FrameCellDecorator {
             if self.print_right(column) {
                 margin
             } else {
+                // Fix to avoid a gap betwen the right border and the next cell
+                area.set_width(area.size().width + margin);
                 0.into()
             },
             if self.print_bottom(row, false) {
@@ -1438,6 +1440,13 @@ impl CellDecorator for FrameCellDecorator {
         let print_bottom = self.print_bottom(row, has_more);
         let print_left = self.print_left(column);
         let print_right = self.print_right(column);
+
+        // println!("----------------------------------------------------------------------------------------------------------------------------------------");
+        // println!(
+        //     "Cell: {},{}: top={}, bottom={}, left={}, right={}",
+        //     column, row, print_top, print_bottom, print_left, print_right
+        // );
+        // println!("----------------------------------------------------------------------------------------------------------------------------------------");
 
         let size = area.size();
         let line_offset = self.line_style.thickness() / 2.0;
