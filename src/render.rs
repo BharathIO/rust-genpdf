@@ -350,6 +350,7 @@ impl<'p> Layer<'p> {
             .into_iter()
             .map(|pos| (self.transform_position(pos).into(), false))
             .collect();
+        // println!("single line shape line_points: {:?}", line_points);
         let line = printpdf::Line {
             points: line_points,
             is_closed: false,
@@ -364,11 +365,16 @@ impl<'p> Layer<'p> {
     where
         I: IntoIterator<Item = LayerPosition>,
     {
-        self.set_fill_color(color);
+        self.set_fill_color(color.clone());
+        // fill color and outline color are the same
+        if let Some(c) = color {
+            self.set_outline_color(c);
+        }
         let line_points: Vec<_> = points
             .into_iter()
             .map(|pos| (self.transform_position(pos).into(), false))
             .collect();
+        // println!("filled shape line_points: {:?}", line_points);
         let line = printpdf::Line {
             points: line_points,
             is_closed: true,
@@ -655,10 +661,11 @@ impl<'p> Area<'p> {
     /// Draws a line with the given points and the given line style.
     ///
     /// The points are relative to the upper left corner of the area.
-    pub fn draw_filled_shape<I>(&self, points: I, color: Option<Color>)
+    pub fn draw_filled_shape<I>(&self, points: I, color: Option<Color>, line_style: LineStyle)
     where
         I: IntoIterator<Item = Position>,
     {
+        self.layer.set_outline_thickness(line_style.thickness());
         self.layer
             .draw_filled_shape(points.into_iter().map(|pos| self.position(pos)), color);
     }

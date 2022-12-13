@@ -1361,8 +1361,10 @@ impl FrameCellDecorator {
         }
     }
 
-    fn print_top(&self, row: usize) -> bool {
-        if self.last_row.map(|last_row| row > last_row).unwrap_or(true) {
+    fn print_top(&self, row: usize, has_more: bool) -> bool {
+        if has_more {
+            self.outer
+        } else if self.last_row.map(|last_row| row > last_row).unwrap_or(true) {
             if row == 0 {
                 self.outer
             } else {
@@ -1398,7 +1400,7 @@ impl CellDecorator for FrameCellDecorator {
     ) -> render::Area<'p> {
         let margin = self.line_style.thickness();
         let margins = Margins::trbl(
-            if self.print_top(row) {
+            if self.print_top(row, false) {
                 margin
             } else {
                 0.into()
@@ -1432,7 +1434,7 @@ impl CellDecorator for FrameCellDecorator {
         row_height: Mm,
         bg_color: Option<style::Color>,
     ) -> Mm {
-        let print_top = self.print_top(row);
+        let print_top = self.print_top(row, has_more);
         let print_bottom = self.print_bottom(row, has_more);
         let print_left = self.print_left(column);
         let print_right = self.print_right(column);
@@ -1455,14 +1457,34 @@ impl CellDecorator for FrameCellDecorator {
                 0.into()
             };
 
+        if let Some(color) = bg_color {
+            let bottom_left = Position::new(left + line_offset, bottom - line_offset);
+            let top_left = Position::new(left + line_offset, top + line_offset);
+            let top_right = Position::new(right - line_offset, top + line_offset);
+            let bottom_right = Position::new(right - line_offset, bottom - line_offset);
+
+            // println!("decorateCell bottom_left: {:?}", bottom_left);
+            // println!("decorateCell top_left: {:?}", top_left);
+            // println!("decorateCell top_right: {:?}", top_right);
+            // println!("decorateCell bottom_right: {:?}", bottom_right);
+            let filled_shape_points = vec![bottom_left, top_left, top_right, bottom_right];
+            // println!("----------------------------------------------------------------------------------------------------------------------------------------");
+            // println!(
+            //     "decorateCell, filled_shape_points: {:?}",
+            //     filled_shape_points
+            // );
+            // println!("----------------------------------------------------------------------------------------------------------------------------------------");
+            area.draw_filled_shape(filled_shape_points, Some(color), self.line_style);
+        }
+
         let mut total_height = row_height;
 
         let top_points = vec![
             Position::new(left, top + line_offset),
             Position::new(right, top + line_offset),
         ];
-        // println!("decorateCell, top_points: {:?}", top_points);
         if print_top {
+            // println!("decorateCell, top_points: {:?}", top_points);
             area.draw_line(top_points, self.line_style);
             total_height += self.line_style.thickness();
         }
@@ -1470,13 +1492,11 @@ impl CellDecorator for FrameCellDecorator {
             Position::new(right - line_offset, top),
             Position::new(right - line_offset, bottom),
         ];
-        // println!("decorateCell, right_points: {:?}", right_points);
 
         if print_right {
-            // println!(
-            //     "drawing right line, right: {:?}, bottom: {:?}, top: {:?}, line_offser: {:?}",
-            //     right, bottom, top, line_offset
-            // );
+            // println!("----------------------------------------------------------------------------------------------------------------------------------------");
+            // println!("decorateCell, right_points: {:?}", right_points);
+            // println!("----------------------------------------------------------------------------------------------------------------------------------------");
             area.draw_line(right_points, self.line_style);
         }
 
@@ -1484,8 +1504,10 @@ impl CellDecorator for FrameCellDecorator {
             Position::new(left, bottom - line_offset),
             Position::new(right, bottom - line_offset),
         ];
-        // println!("decorateCell, bottom_points: {:?}", bottom_points);
         if print_bottom {
+            // println!("----------------------------------------------------------------------------------------------------------------------------------------");
+            // println!("decorateCell, bottom_points: {:?}", bottom_points);
+            // println!("----------------------------------------------------------------------------------------------------------------------------------------");
             area.draw_line(bottom_points, self.line_style);
             total_height += self.line_style.thickness();
         }
@@ -1501,16 +1523,6 @@ impl CellDecorator for FrameCellDecorator {
 
         if column + 1 == self.num_columns {
             self.last_row = Some(row);
-        }
-
-        if let Some(color) = bg_color {
-            let bottom_left = Position::new(left, bottom - line_offset);
-            let top_left = Position::new(left + line_offset, top);
-            let top_right = Position::new(right, top + line_offset);
-            let bottom_right = Position::new(right - line_offset, bottom);
-
-            let filled_shape_points = vec![bottom_left, top_left, top_right, bottom_right];
-            area.draw_filled_shape(filled_shape_points, Some(color));
         }
 
         total_height
@@ -1802,11 +1814,11 @@ impl TableLayout {
         style: Style,
     ) -> Result<RenderResult, Error> {
         let mut result = RenderResult::default();
-        println!(
-            "render_row: total area width: {:?}, area height: {:?}",
-            area.size().width,
-            area.size().height
-        );
+        // println!(
+        //     "render_row: total area width: {:?}, area height: {:?}",
+        //     area.size().width,
+        //     area.size().height
+        // );
         let areas = area.split_horizontally(&self.column_weights);
         let cell_areas = if let Some(decorator) = &self.cell_decorator {
             areas
@@ -1820,20 +1832,24 @@ impl TableLayout {
 
         // get row probable height
         let mut row_probable_height = Mm::from(0);
-        for (area, cell) in cell_areas.iter().zip(self.rows[self.render_idx].iter_mut()) {
+        for (area, cell) in cell_areas
+            .clone()
+            .iter()
+            .zip(self.rows[self.render_idx].iter_mut())
+        {
             let el_probable_height = cell
                 .element
                 .get_probable_height(style, context, area.clone());
             row_probable_height = row_probable_height.max(el_probable_height);
         }
-        println!("render_row: row_probable_height: {:?}", row_probable_height);
+        // println!("render_row: row_probable_height: {:?}", row_probable_height);
         if row_probable_height > area.size().height {
             result.has_more = true;
             return Ok(result);
         }
 
         if let Some(decorator) = &mut self.cell_decorator {
-            for (i, area) in areas.into_iter().enumerate() {
+            for (i, area) in cell_areas.clone().into_iter().enumerate() {
                 let cell_bg_color = self.rows[self.render_idx][i].background_color;
                 let height = decorator.decorate_cell(
                     i,
@@ -1854,7 +1870,7 @@ impl TableLayout {
             row_height = row_height.max(element_result.size.height);
         }
         result.size.height = row_height;
-        println!("render_row: row_height: {:?}", row_height);
+        // println!("render_row: actual row_height: {:?}", row_height);
 
         Ok(result)
     }
@@ -1896,12 +1912,13 @@ impl Element for TableLayout {
             };
             match rr {
                 Ok(mut element) => {
+                    // println!("Rendering header row...");
                     let header_result = element.render(context, area.clone(), style)?;
                     result.size.height += header_result.size.height;
-                    println!(
-                        "render: header_result.size.height: {:?}, result.size.height: {:?}",
-                        header_result.size.height, result.size.height
-                    );
+                    // println!(
+                    //     "render: header_result.size.height: {:?}, result.size.height: {:?}",
+                    //     header_result.size.height, result.size.height
+                    // );
                     area.add_offset(Position::new(0, header_result.size.height));
                 }
                 Err(e) => {

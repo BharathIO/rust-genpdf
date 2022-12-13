@@ -16,7 +16,6 @@
 use std::env;
 use std::path::PathBuf;
 
-use genpdf::elements::TableLayout;
 use genpdf::error::Error;
 use genpdf::fonts::from_files;
 use genpdf::fonts::FontData;

@@ -79,6 +79,14 @@ pub const PINK: Color = Color::Cmyk(0, 255, 255, 0);
 pub const PINK_RGB: Color = Color::Rgb(255, 192, 203);
 /// GREYSCALE
 pub const GREY: Color = Color::Greyscale(127);
+/// CMYK ORANGE
+pub const ORANGE: Color = Color::Cmyk(0, 255, 255, 0);
+/// RGB PURPLE
+pub const PURPLE: Color = Color::Rgb(128, 0, 128);
+/// RGB LIGHT GREY
+pub const LIGHT_GREY: Color = Color::Rgb(211, 211, 211);
+/// RGB LAVENDER
+pub const LAVENDER: Color = Color::Rgb(230, 230, 250);
 
 /// Color Names
 pub enum ColorName {
@@ -102,6 +110,14 @@ pub enum ColorName {
     WHITE,
     /// GREY
     GREY,
+    /// ORANGE
+    ORANGE,
+    /// PURPLE
+    PURPLE,
+    /// LIGHT GREY
+    LIGHTGREY,
+    /// LAVENDER
+    LAVENDER,
 }
 
 /// get a color from a string
@@ -117,6 +133,10 @@ pub fn get_color(name: ColorName) -> Option<Color> {
         ColorName::BLACK => Some(BLACK),
         ColorName::WHITE => Some(WHITE),
         ColorName::GREY => Some(GREY),
+        ColorName::ORANGE => Some(ORANGE),
+        ColorName::PURPLE => Some(PURPLE),
+        ColorName::LIGHTGREY => Some(LIGHT_GREY),
+        ColorName::LAVENDER => Some(LAVENDER),
     }
 }
 
@@ -133,6 +153,10 @@ impl From<&str> for ColorName {
             "BLACK" => ColorName::BLACK,
             "WHITE" => ColorName::WHITE,
             "GREY" => ColorName::GREY,
+            "ORANGE" => ColorName::ORANGE,
+            "PURPLE" => ColorName::PURPLE,
+            "LIGHTGREY" => ColorName::LIGHTGREY,
+            "LAVENDER" => ColorName::LAVENDER,
             _ => ColorName::BLACK,
         }
     }
