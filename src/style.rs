@@ -87,6 +87,8 @@ pub const PURPLE: Color = Color::Rgb(128, 0, 128);
 pub const LIGHT_GREY: Color = Color::Rgb(211, 211, 211);
 /// RGB LAVENDER
 pub const LAVENDER: Color = Color::Rgb(230, 230, 250);
+/// RGB LIGHT BLUE
+pub const LIGHT_BLUE: Color = Color::Rgb(173, 216, 230);
 
 /// Color Names
 pub enum ColorName {
@@ -118,6 +120,8 @@ pub enum ColorName {
     LIGHTGREY,
     /// LAVENDER
     LAVENDER,
+    /// LIGHT BLUE
+    LIGHTBLUE,
 }
 
 /// get a color from a string
@@ -137,6 +141,7 @@ pub fn get_color(name: ColorName) -> Option<Color> {
         ColorName::PURPLE => Some(PURPLE),
         ColorName::LIGHTGREY => Some(LIGHT_GREY),
         ColorName::LAVENDER => Some(LAVENDER),
+        ColorName::LIGHTBLUE => Some(LIGHT_BLUE),
     }
 }
 
@@ -157,6 +162,7 @@ impl From<&str> for ColorName {
             "PURPLE" => ColorName::PURPLE,
             "LIGHTGREY" => ColorName::LIGHTGREY,
             "LAVENDER" => ColorName::LAVENDER,
+            "LIGHTBLUE" => ColorName::LIGHTBLUE,
             _ => ColorName::BLACK,
         }
     }

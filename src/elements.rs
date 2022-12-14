@@ -1823,11 +1823,6 @@ impl TableLayout {
         style: Style,
     ) -> Result<RenderResult, Error> {
         let mut result = RenderResult::default();
-        // println!(
-        //     "render_row: total area width: {:?}, area height: {:?}",
-        //     area.size().width,
-        //     area.size().height
-        // );
         let areas = area.split_horizontally(&self.column_weights);
         let cell_areas = if let Some(decorator) = &self.cell_decorator {
             areas
@@ -1905,7 +1900,7 @@ impl Element for TableLayout {
             return Ok(result);
         }
         if let Some(margins) = self.margins {
-            result.size.height += margins.top;
+            result.size.height += margins.top + margins.bottom;
             area.add_margins(margins);
         }
         if let Some(decorator) = &mut self.cell_decorator {
@@ -1921,13 +1916,14 @@ impl Element for TableLayout {
             };
             match rr {
                 Ok(mut element) => {
-                    // println!("Rendering header row...");
+                    let prob_height = element.get_probable_height(style, context, area.clone());
+                    if prob_height > area.size().height {
+                        println!("Cannot render header row, not enough space");
+                        result.has_more = true;
+                        return Ok(result);
+                    }
                     let header_result = element.render(context, area.clone(), style)?;
                     result.size.height += header_result.size.height;
-                    // println!(
-                    //     "render: header_result.size.height: {:?}, result.size.height: {:?}",
-                    //     header_result.size.height, result.size.height
-                    // );
                     area.add_offset(Position::new(0, header_result.size.height));
                 }
                 Err(e) => {
@@ -1969,22 +1965,27 @@ impl Element for TableLayout {
         }
 
         // TODO: calculate table height row height
-        // if let Some(cb) = &self.header_row_callback_fn {
-        //     let rr = match cb(context.page_number) {
-        //         Ok(v) => Ok(v),
-        //         Err(e) => Err(e),
-        //     };
-        //     match rr {
-        //         Ok(mut element) => {
-        //             let header_height = element.get_probable_height(style, context, area.clone());
-        //             height += header_height;
-        //         }
-        //         Err(e) => {
-        //             return Mm::from(0);
-        //         }
-        //     };
-        // };
-
+        if let Some(cb) = &self.header_row_callback_fn {
+            let rr = match cb(context.page_number) {
+                Ok(v) => Ok(v),
+                Err(e) => Err(e),
+            };
+            match rr {
+                Ok(mut element) => {
+                    let header_height = element.get_probable_height(style, context, area.clone());
+                    height += header_height;
+                }
+                Err(_) => {
+                    return Mm::from(0);
+                }
+            };
+        };
+        match self.margins {
+            Some(margins) => {
+                height += margins.top + margins.bottom;
+            }
+            None => {}
+        }
         height
     }
 }
