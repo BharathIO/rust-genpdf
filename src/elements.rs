@@ -177,10 +177,15 @@ impl Element for LinearLayout {
         self.render_vertical(context, area, style)
     }
 
-    fn get_probable_height(&self, _style: Style, context: &Context, area: render::Area<'_>) -> Mm {
+    fn get_probable_height(
+        &mut self,
+        style: Style,
+        context: &Context,
+        area: render::Area<'_>,
+    ) -> Mm {
         self.elements
-            .iter()
-            .map(|e| e.get_probable_height(_style, context, area.clone()))
+            .iter_mut()
+            .map(|e| e.get_probable_height(style, context, area.clone()))
             .sum()
     }
 }
@@ -237,7 +242,7 @@ impl Element for Text {
     }
 
     fn get_probable_height(
-        &self,
+        &mut self,
         style: style::Style,
         context: &Context,
         _area: render::Area<'_>,
@@ -487,15 +492,20 @@ impl Element for Paragraph {
             }
         }
 
+        if let Some(margins) = self.margins {
+            result.size.width += margins.left + margins.right;
+            result.size.height += margins.top + margins.bottom;
+        }
         Ok(result)
     }
 
     fn get_probable_height(
-        &self,
-        _style: style::Style,
+        &mut self,
+        style: style::Style,
         context: &Context,
         area: render::Area<'_>,
     ) -> Mm {
+        self.apply_style(style);
         let mut height = Mm::default();
         let mut words = wrap::Words::new(self.text.clone()).collect();
         words = replace_page_number(words, context);
@@ -507,6 +517,9 @@ impl Element for Paragraph {
                 .map(|s| s.style.metrics(&context.font_cache))
                 .fold(fonts::Metrics::default(), |max, m| max.max(&m));
             height += metrics.line_height;
+        }
+        if let Some(margins) = self.margins {
+            height += margins.top + margins.bottom;
         }
         height
     }
@@ -585,7 +598,7 @@ impl Element for Break {
     }
 
     fn get_probable_height(
-        &self,
+        &mut self,
         style: style::Style,
         context: &Context,
         area: render::Area<'_>,
@@ -643,7 +656,7 @@ impl Element for PageBreak {
     }
 
     fn get_probable_height(
-        &self,
+        &mut self,
         _style: style::Style,
         _context: &Context,
         _area: render::Area<'_>,
@@ -707,7 +720,7 @@ impl<E: Element> Element for PaddedElement<E> {
     }
 
     fn get_probable_height(
-        &self,
+        &mut self,
         style: style::Style,
         context: &Context,
         area: render::Area<'_>,
@@ -772,7 +785,7 @@ impl<E: Element> Element for StyledElement<E> {
     }
 
     fn get_probable_height(
-        &self,
+        &mut self,
         style: style::Style,
         context: &Context,
         area: render::Area<'_>,
@@ -894,7 +907,7 @@ impl<E: Element> Element for FramedElement<E> {
     }
 
     fn get_probable_height(
-        &self,
+        &mut self,
         style: style::Style,
         context: &Context,
         area: render::Area<'_>,
@@ -954,6 +967,39 @@ impl<E: Element> Element for FramedElement<E> {
 /// ```
 ///
 /// [`LinearLayout`]: struct.LinearLayout.html
+
+/// An ordered/unordered list of elements with bullet points.
+pub enum UOList {
+    /// unordered list
+    UnorderedList(UnorderedList),
+    /// order list
+    OrderedList(OrderedList),
+}
+
+impl UOList {
+    /// push element to list
+    pub fn push<E: Element + 'static>(&mut self, element: E) {
+        match self {
+            UOList::OrderedList(ol) => ol.push(element),
+            UOList::UnorderedList(ul) => ul.push(element),
+        }
+    }
+    /// push list
+    pub fn push_list(&mut self, l: UOList) {
+        match l {
+            UOList::UnorderedList(ul) => match self {
+                UOList::OrderedList(ol2) => ol2.push_list(ul),
+                UOList::UnorderedList(ul2) => ul2.push_list(ul),
+            },
+            UOList::OrderedList(ol) => match self {
+                UOList::OrderedList(ol2) => ol2.push_list(ol),
+                UOList::UnorderedList(ul2) => ul2.push_list(ol),
+            },
+        }
+    }
+}
+
+///
 pub struct UnorderedList {
     layout: LinearLayout,
     bullet: Option<String>,
@@ -974,6 +1020,15 @@ impl UnorderedList {
             layout: LinearLayout::vertical(),
             bullet: Some(bullet.into()),
         }
+    }
+
+    /// Push UnorderedList/OrderedList to the list.
+    pub fn push_list<E: Element + 'static>(&mut self, list: E) {
+        println!("push_list, list");
+        let mut point = BulletPoint::new(list);
+        point.indent = point.indent / 2.0;
+        point.set_bullet("".to_string());
+        self.layout.push(point);
     }
 
     /// Adds an element to this list.
@@ -1003,7 +1058,7 @@ impl Element for UnorderedList {
     }
 
     fn get_probable_height(
-        &self,
+        &mut self,
         style: style::Style,
         context: &Context,
         area: render::Area<'_>,
@@ -1104,6 +1159,14 @@ impl OrderedList {
         }
     }
 
+    /// Push OrderedList/UnordredList to the list.
+    pub fn push_list<E: Element + 'static>(&mut self, list: E) {
+        let mut point = BulletPoint::new(list);
+        point.indent = point.indent / 2.0;
+        point.set_bullet("".to_string());
+        self.layout.push(point);
+    }
+
     /// Adds an element to this list.
     pub fn push<E: Element + 'static>(&mut self, element: E) {
         let mut point = BulletPoint::new(element);
@@ -1130,7 +1193,7 @@ impl Element for OrderedList {
     }
 
     fn get_probable_height(
-        &self,
+        &mut self,
         style: style::Style,
         context: &Context,
         area: render::Area<'_>,
@@ -1236,7 +1299,7 @@ impl<E: Element> Element for BulletPoint<E> {
     }
 
     fn get_probable_height(
-        &self,
+        &mut self,
         style: style::Style,
         context: &Context,
         area: render::Area<'_>,
@@ -1282,6 +1345,7 @@ pub trait CellDecorator {
         has_more: bool,
         area: render::Area<'_>,
         row_height: Mm,
+        bg_color: Option<style::Color>,
     ) -> Mm;
 }
 
@@ -1347,8 +1411,10 @@ impl FrameCellDecorator {
         }
     }
 
-    fn print_top(&self, row: usize) -> bool {
-        if self.last_row.map(|last_row| row > last_row).unwrap_or(true) {
+    fn print_top(&self, row: usize, has_more: bool) -> bool {
+        if has_more {
+            self.outer
+        } else if self.last_row.map(|last_row| row > last_row).unwrap_or(true) {
             if row == 0 {
                 self.outer
             } else {
@@ -1384,7 +1450,7 @@ impl CellDecorator for FrameCellDecorator {
     ) -> render::Area<'p> {
         let margin = self.line_style.thickness();
         let margins = Margins::trbl(
-            if self.print_top(row) {
+            if self.print_top(row, false) {
                 margin
             } else {
                 0.into()
@@ -1392,6 +1458,8 @@ impl CellDecorator for FrameCellDecorator {
             if self.print_right(column) {
                 margin
             } else {
+                // Fix to avoid a gap betwen the right border and the next cell
+                area.set_width(area.size().width + margin);
                 0.into()
             },
             if self.print_bottom(row, false) {
@@ -1416,11 +1484,19 @@ impl CellDecorator for FrameCellDecorator {
         has_more: bool,
         area: render::Area<'_>,
         row_height: Mm,
+        bg_color: Option<style::Color>,
     ) -> Mm {
-        let print_top = self.print_top(row);
+        let print_top = self.print_top(row, has_more);
         let print_bottom = self.print_bottom(row, has_more);
         let print_left = self.print_left(column);
         let print_right = self.print_right(column);
+
+        // println!("----------------------------------------------------------------------------------------------------------------------------------------");
+        // println!(
+        //     "Cell: {},{}: top={}, bottom={}, left={}, right={}",
+        //     column, row, print_top, print_bottom, print_left, print_right
+        // );
+        // println!("----------------------------------------------------------------------------------------------------------------------------------------");
 
         let size = area.size();
         let line_offset = self.line_style.thickness() / 2.0;
@@ -1440,14 +1516,34 @@ impl CellDecorator for FrameCellDecorator {
                 0.into()
             };
 
+        if let Some(color) = bg_color {
+            let bottom_left = Position::new(left + line_offset, bottom - line_offset);
+            let top_left = Position::new(left + line_offset, top + line_offset);
+            let top_right = Position::new(right - line_offset, top + line_offset);
+            let bottom_right = Position::new(right - line_offset, bottom - line_offset);
+
+            // println!("decorateCell bottom_left: {:?}", bottom_left);
+            // println!("decorateCell top_left: {:?}", top_left);
+            // println!("decorateCell top_right: {:?}", top_right);
+            // println!("decorateCell bottom_right: {:?}", bottom_right);
+            let filled_shape_points = vec![bottom_left, top_left, top_right, bottom_right];
+            // println!("----------------------------------------------------------------------------------------------------------------------------------------");
+            // println!(
+            //     "decorateCell, filled_shape_points: {:?}",
+            //     filled_shape_points
+            // );
+            // println!("----------------------------------------------------------------------------------------------------------------------------------------");
+            area.draw_filled_shape(filled_shape_points, Some(color), self.line_style);
+        }
+
         let mut total_height = row_height;
 
         let top_points = vec![
             Position::new(left, top + line_offset),
             Position::new(right, top + line_offset),
         ];
-        // println!("decorateCell, top_points: {:?}", top_points);
         if print_top {
+            // println!("decorateCell, top_points: {:?}", top_points);
             area.draw_line(top_points, self.line_style);
             total_height += self.line_style.thickness();
         }
@@ -1455,13 +1551,11 @@ impl CellDecorator for FrameCellDecorator {
             Position::new(right - line_offset, top),
             Position::new(right - line_offset, bottom),
         ];
-        // println!("decorateCell, right_points: {:?}", right_points);
 
         if print_right {
-            // println!(
-            //     "drawing right line, right: {:?}, bottom: {:?}, top: {:?}, line_offser: {:?}",
-            //     right, bottom, top, line_offset
-            // );
+            // println!("----------------------------------------------------------------------------------------------------------------------------------------");
+            // println!("decorateCell, right_points: {:?}", right_points);
+            // println!("----------------------------------------------------------------------------------------------------------------------------------------");
             area.draw_line(right_points, self.line_style);
         }
 
@@ -1469,8 +1563,10 @@ impl CellDecorator for FrameCellDecorator {
             Position::new(left, bottom - line_offset),
             Position::new(right, bottom - line_offset),
         ];
-        // println!("decorateCell, bottom_points: {:?}", bottom_points);
         if print_bottom {
+            // println!("----------------------------------------------------------------------------------------------------------------------------------------");
+            // println!("decorateCell, bottom_points: {:?}", bottom_points);
+            // println!("----------------------------------------------------------------------------------------------------------------------------------------");
             area.draw_line(bottom_points, self.line_style);
             total_height += self.line_style.thickness();
         }
@@ -1527,26 +1623,39 @@ impl CellDecorator for FrameCellDecorator {
 /// [`element`]: #method.element
 pub struct TableLayoutRow<'a> {
     table_layout: &'a mut TableLayout,
-    elements: Vec<Box<dyn Element>>,
+    cells: Vec<TableCell>,
+}
+
+/// A cell of a table layout.
+pub struct TableCell {
+    element: Box<dyn Element>,
+    background_color: Option<style::Color>,
+}
+
+impl TableCell {
+    /// new
+    pub fn new(element: Box<dyn Element>, background_color: Option<style::Color>) -> TableCell {
+        TableCell {
+            element,
+            background_color,
+        }
+    }
 }
 
 impl<'a> TableLayoutRow<'a> {
     fn new(table_layout: &'a mut TableLayout) -> TableLayoutRow<'a> {
         TableLayoutRow {
             table_layout,
-            elements: Vec::new(),
+            cells: Vec::new(),
         }
     }
 
-    /// Adds the given element to this row.
-    pub fn push_element<E: IntoBoxedElement>(&mut self, element: E) {
-        self.elements.push(element.into_boxed_element());
-    }
-
-    /// Adds the given element to this row and returns the row.
-    #[must_use]
-    pub fn element<E: IntoBoxedElement>(mut self, element: E) -> Self {
-        self.push_element(element);
+    /// Create a cell with  given element and color and add to cells
+    pub fn cell<E: IntoBoxedElement>(mut self, element: E, color: Option<style::Color>) -> Self {
+        self.cells.push(TableCell {
+            element: element.into_boxed_element(),
+            background_color: color,
+        });
         self
     }
 
@@ -1555,14 +1664,7 @@ impl<'a> TableLayoutRow<'a> {
     /// This method fails if the number of elements in this row does not match the number of
     /// columns in the table.
     pub fn push(self) -> Result<(), Error> {
-        self.table_layout.push_row(self.elements)
-    }
-}
-
-impl<'a, E: IntoBoxedElement> iter::Extend<E> for TableLayoutRow<'a> {
-    fn extend<I: IntoIterator<Item = E>>(&mut self, iter: I) {
-        self.elements
-            .extend(iter.into_iter().map(|e| e.into_boxed_element()))
+        self.table_layout.push_row(self.cells)
     }
 }
 
@@ -1645,7 +1747,7 @@ impl ColumnWidths {
 /// Table Layout
 pub struct TableLayout {
     column_weights: ColumnWidths,
-    rows: Vec<Vec<Box<dyn Element>>>,
+    rows: Vec<Vec<TableCell>>,
     render_idx: usize,
     cell_decorator: Option<Box<dyn CellDecorator>>,
     header_row_callback_fn: Option<TableHeaderRowCallback>,
@@ -1748,16 +1850,16 @@ impl TableLayout {
     ///
     /// The number of elements in the given vector must match the number of columns.  Otherwise, an
     /// error is returned.
-    pub fn push_row(&mut self, row: Vec<Box<dyn Element>>) -> Result<(), Error> {
-        if row.len() == self.column_weights.len() {
-            self.rows.push(row);
+    pub fn push_row(&mut self, cells: Vec<TableCell>) -> Result<(), Error> {
+        if cells.len() == self.column_weights.len() {
+            self.rows.push(cells);
             Ok(())
         } else {
             Err(Error::new(
                 format!(
                     "Expected {} elements in table row, received {}",
                     self.column_weights.len(),
-                    row.len()
+                    cells.len()
                 ),
                 ErrorKind::InvalidData,
             ))
@@ -1771,7 +1873,6 @@ impl TableLayout {
         style: Style,
     ) -> Result<RenderResult, Error> {
         let mut result = RenderResult::default();
-        // println!("render_row: total area width: {:?}", area.size().width);
         let areas = area.split_horizontally(&self.column_weights);
         let cell_areas = if let Some(decorator) = &self.cell_decorator {
             areas
@@ -1783,22 +1884,47 @@ impl TableLayout {
             areas.clone()
         };
 
+        // get row probable height
+        let mut row_probable_height = Mm::from(0);
+        for (area, cell) in cell_areas
+            .clone()
+            .iter()
+            .zip(self.rows[self.render_idx].iter_mut())
+        {
+            let el_probable_height = cell
+                .element
+                .get_probable_height(style, context, area.clone());
+            row_probable_height = row_probable_height.max(el_probable_height);
+        }
+        // println!("render_row: row_probable_height: {:?}", row_probable_height);
+        if row_probable_height > area.size().height {
+            result.has_more = true;
+            return Ok(result);
+        }
+
+        if let Some(decorator) = &mut self.cell_decorator {
+            for (i, area) in cell_areas.clone().into_iter().enumerate() {
+                let cell_bg_color = self.rows[self.render_idx][i].background_color;
+                let height = decorator.decorate_cell(
+                    i,
+                    self.render_idx,
+                    true,
+                    area,
+                    row_probable_height,
+                    cell_bg_color,
+                );
+                result.size.height = result.size.height.max(height);
+            }
+        }
+
         let mut row_height = Mm::from(0);
-        for (area, element) in cell_areas.iter().zip(self.rows[self.render_idx].iter_mut()) {
-            let element_result = element.render(context, area.clone(), style)?;
+        for (area, cell) in cell_areas.iter().zip(self.rows[self.render_idx].iter_mut()) {
+            let element_result = cell.element.render(context, area.clone(), style)?;
             result.has_more |= element_result.has_more;
             row_height = row_height.max(element_result.size.height);
         }
         result.size.height = row_height;
-
-        if let Some(decorator) = &mut self.cell_decorator {
-            for (i, area) in areas.into_iter().enumerate() {
-                // println!("render cell {}, area width {:?}", i, area.size().width);
-                let height =
-                    decorator.decorate_cell(i, self.render_idx, result.has_more, area, row_height);
-                result.size.height = result.size.height.max(height);
-            }
-        }
+        // println!("render_row: actual row_height: {:?}", row_height);
 
         Ok(result)
     }
@@ -1824,7 +1950,7 @@ impl Element for TableLayout {
             return Ok(result);
         }
         if let Some(margins) = self.margins {
-            result.size.height += margins.top;
+            result.size.height += margins.top + margins.bottom;
             area.add_margins(margins);
         }
         if let Some(decorator) = &mut self.cell_decorator {
@@ -1840,6 +1966,12 @@ impl Element for TableLayout {
             };
             match rr {
                 Ok(mut element) => {
+                    let prob_height = element.get_probable_height(style, context, area.clone());
+                    if prob_height > area.size().height {
+                        println!("Cannot render header row, not enough space");
+                        result.has_more = true;
+                        return Ok(result);
+                    }
                     let header_result = element.render(context, area.clone(), style)?;
                     result.size.height += header_result.size.height;
                     area.add_offset(Position::new(0, header_result.size.height));
@@ -1864,20 +1996,45 @@ impl Element for TableLayout {
     }
 
     fn get_probable_height(
-        &self,
-        _style: style::Style,
+        &mut self,
+        style: style::Style,
         context: &Context,
         area: render::Area<'_>,
     ) -> Mm {
         let mut height = Mm::from(0);
-        for row in self.rows.iter() {
+        // calculate table height using rows
+        for row in self.rows.iter_mut() {
             let mut row_height = Mm::from(0);
-            let areas = area.split_horizontally(&self.column_weights);
-            for (area, element) in areas.iter().zip(row.iter()) {
-                let element_height = element.get_probable_height(_style, context, area.clone());
-                row_height = row_height.max(element_height);
+            for cell in row.iter_mut() {
+                let cell_height = cell
+                    .element
+                    .get_probable_height(style, context, area.clone());
+                row_height = row_height.max(cell_height);
             }
             height += row_height;
+        }
+
+        // TODO: calculate table height row height
+        if let Some(cb) = &self.header_row_callback_fn {
+            let rr = match cb(context.page_number) {
+                Ok(v) => Ok(v),
+                Err(e) => Err(e),
+            };
+            match rr {
+                Ok(mut element) => {
+                    let header_height = element.get_probable_height(style, context, area.clone());
+                    height += header_height;
+                }
+                Err(_) => {
+                    return Mm::from(0);
+                }
+            };
+        };
+        match self.margins {
+            Some(margins) => {
+                height += margins.top + margins.bottom;
+            }
+            None => {}
         }
         height
     }

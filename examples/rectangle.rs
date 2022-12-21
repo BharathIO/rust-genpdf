@@ -25,7 +25,7 @@ fn main() {
     let grey_color = Color::Greyscale(Greyscale::new(0.6, None));
     // let out_line_color = Color::Greyscale(Greyscale::new(0.2, None));
     let fill_color = Color::Cmyk(Cmyk::new(0.0, 0.23, 0.0, 0.0, None));
-    let outline_color = Color::Rgb(Rgb::new(0.75, 1.0, 0.64, None));
+    let _outline_color = Color::Rgb(Rgb::new(0.75, 1.0, 0.64, None));
 
     let line_points = vec![
         (Point::new(mm_x(50.0), mm_y(730.0)), false), //

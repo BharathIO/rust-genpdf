@@ -57,6 +57,117 @@ pub enum Color {
     Greyscale(u8),
 }
 
+/// RGB RED
+pub const RED: Color = Color::Rgb(255, 0, 0);
+/// RGB GREEN
+pub const GREEN: Color = Color::Rgb(0, 255, 0);
+/// RGB BLUE
+pub const BLUE: Color = Color::Rgb(0, 0, 255);
+/// CMYK CYAN
+pub const CYAN: Color = Color::Cmyk(255, 0, 0, 0);
+/// CMYK MAGENTA
+pub const MAGENTA: Color = Color::Cmyk(0, 255, 0, 0);
+/// CMYK YELLOW
+pub const YELLOW: Color = Color::Cmyk(0, 0, 255, 0);
+/// CMYK BLACK
+pub const BLACK: Color = Color::Cmyk(0, 0, 0, 255);
+/// CMYK WHITE
+pub const WHITE: Color = Color::Cmyk(0, 0, 0, 0);
+/// CMYK PINK
+pub const PINK: Color = Color::Cmyk(0, 255, 255, 0);
+/// RGB PINK
+pub const PINK_RGB: Color = Color::Rgb(255, 192, 203);
+/// GREYSCALE
+pub const GREY: Color = Color::Greyscale(127);
+/// CMYK ORANGE
+pub const ORANGE: Color = Color::Cmyk(0, 255, 255, 0);
+/// RGB PURPLE
+pub const PURPLE: Color = Color::Rgb(128, 0, 128);
+/// RGB LIGHT GREY
+pub const LIGHT_GREY: Color = Color::Rgb(211, 211, 211);
+/// RGB LAVENDER
+pub const LAVENDER: Color = Color::Rgb(230, 230, 250);
+/// RGB LIGHT BLUE
+pub const LIGHT_BLUE: Color = Color::Rgb(173, 216, 230);
+
+/// Color Names
+pub enum ColorName {
+    /// RED
+    RED,
+    /// GREEN
+    GREEN,
+    /// BLUE
+    BLUE,
+    /// CYAN
+    CYAN,
+    /// MAGENTA
+    MAGENTA,
+    /// YELLOW
+    YELLOW,
+    /// PINK
+    PINK,
+    /// BLACK
+    BLACK,
+    /// WHITE
+    WHITE,
+    /// GREY
+    GREY,
+    /// ORANGE
+    ORANGE,
+    /// PURPLE
+    PURPLE,
+    /// LIGHT GREY
+    LIGHTGREY,
+    /// LAVENDER
+    LAVENDER,
+    /// LIGHT BLUE
+    LIGHTBLUE,
+}
+
+/// get a color from a string
+pub fn get_color(name: ColorName) -> Option<Color> {
+    match name {
+        ColorName::RED => Some(RED),
+        ColorName::GREEN => Some(GREEN),
+        ColorName::BLUE => Some(BLUE),
+        ColorName::CYAN => Some(CYAN),
+        ColorName::MAGENTA => Some(MAGENTA),
+        ColorName::YELLOW => Some(YELLOW),
+        ColorName::PINK => Some(PINK),
+        ColorName::BLACK => Some(BLACK),
+        ColorName::WHITE => Some(WHITE),
+        ColorName::GREY => Some(GREY),
+        ColorName::ORANGE => Some(ORANGE),
+        ColorName::PURPLE => Some(PURPLE),
+        ColorName::LIGHTGREY => Some(LIGHT_GREY),
+        ColorName::LAVENDER => Some(LAVENDER),
+        ColorName::LIGHTBLUE => Some(LIGHT_BLUE),
+    }
+}
+
+impl From<&str> for ColorName {
+    fn from(x: &str) -> ColorName {
+        match x.to_uppercase().as_str() {
+            "RED" => ColorName::RED,
+            "GREEN" => ColorName::GREEN,
+            "BLUE" => ColorName::BLUE,
+            "CYAN" => ColorName::CYAN,
+            "MAGENTA" => ColorName::MAGENTA,
+            "YELLOW" => ColorName::YELLOW,
+            "PINK" => ColorName::PINK,
+            "BLACK" => ColorName::BLACK,
+            "WHITE" => ColorName::WHITE,
+            "GREY" => ColorName::GREY,
+            "ORANGE" => ColorName::ORANGE,
+            "PURPLE" => ColorName::PURPLE,
+            "LIGHTGREY" => ColorName::LIGHTGREY,
+            "LAVENDER" => ColorName::LAVENDER,
+            "LIGHTBLUE" => ColorName::LIGHTBLUE,
+            _ => ColorName::BLACK,
+        }
+    }
+}
+
 impl From<Color> for printpdf::Color {
     fn from(color: Color) -> printpdf::Color {
         match color {

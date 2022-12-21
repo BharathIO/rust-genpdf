@@ -291,7 +291,7 @@ impl Element for Image {
     }
 
     fn get_probable_height(
-        &self,
+        &mut self,
         _style: style::Style,
         _context: &Context,
         _area: render::Area<'_>,
