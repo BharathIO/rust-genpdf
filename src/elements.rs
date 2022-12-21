@@ -967,6 +967,39 @@ impl<E: Element> Element for FramedElement<E> {
 /// ```
 ///
 /// [`LinearLayout`]: struct.LinearLayout.html
+
+/// An ordered/unordered list of elements with bullet points.
+pub enum UOList {
+    /// unordered list
+    UnorderedList(UnorderedList),
+    /// order list
+    OrderedList(OrderedList),
+}
+
+impl UOList {
+    /// push element to list
+    pub fn push<E: Element + 'static>(&mut self, element: E) {
+        match self {
+            UOList::OrderedList(ol) => ol.push(element),
+            UOList::UnorderedList(ul) => ul.push(element),
+        }
+    }
+    /// push list
+    pub fn push_list(&mut self, l: UOList) {
+        match l {
+            UOList::UnorderedList(ul) => match self {
+                UOList::OrderedList(ol2) => ol2.push_list(ul),
+                UOList::UnorderedList(ul2) => ul2.push_list(ul),
+            },
+            UOList::OrderedList(ol) => match self {
+                UOList::OrderedList(ol2) => ol2.push_list(ol),
+                UOList::UnorderedList(ul2) => ul2.push_list(ol),
+            },
+        }
+    }
+}
+
+///
 pub struct UnorderedList {
     layout: LinearLayout,
     bullet: Option<String>,
@@ -987,6 +1020,15 @@ impl UnorderedList {
             layout: LinearLayout::vertical(),
             bullet: Some(bullet.into()),
         }
+    }
+
+    /// Push UnorderedList/OrderedList to the list.
+    pub fn push_list<E: Element + 'static>(&mut self, list: E) {
+        println!("push_list, list");
+        let mut point = BulletPoint::new(list);
+        point.indent = point.indent / 2.0;
+        point.set_bullet("".to_string());
+        self.layout.push(point);
     }
 
     /// Adds an element to this list.
@@ -1115,6 +1157,14 @@ impl OrderedList {
             layout: LinearLayout::vertical(),
             number: start,
         }
+    }
+
+    /// Push OrderedList/UnordredList to the list.
+    pub fn push_list<E: Element + 'static>(&mut self, list: E) {
+        let mut point = BulletPoint::new(list);
+        point.indent = point.indent / 2.0;
+        point.set_bullet("".to_string());
+        self.layout.push(point);
     }
 
     /// Adds an element to this list.
