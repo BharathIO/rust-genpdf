@@ -51,12 +51,15 @@ use crate::error::{Error, ErrorKind};
 use crate::fonts;
 use crate::render;
 use crate::style;
+use crate::style::get_color;
+use crate::style::BLACK;
 use crate::style::{LineStyle, Style, StyledString};
 use crate::wrap;
 use crate::{Alignment, Context, Element, Margins, Mm, Position, RenderResult, Size};
 
 #[cfg(feature = "images")]
 pub use images::Image;
+use printpdf::Line;
 
 /// Helper trait for creating boxed elements.
 pub trait IntoBoxedElement {
@@ -454,6 +457,7 @@ impl Element for Paragraph {
 
             if let Some(mut section) = area.text_section(&context.font_cache, position, metrics) {
                 for s in line {
+                    println!("Paragraph::render, s.style: {:?}", s.style);
                     section.print_str(&s.s, s.style)?;
                     rendered_len += s.s.len();
                 }
@@ -1282,6 +1286,7 @@ pub trait CellDecorator {
         has_more: bool,
         area: render::Area<'_>,
         row_height: Mm,
+        bg_color: Option<style::Color>,
     ) -> Mm;
 }
 
@@ -1416,14 +1421,20 @@ impl CellDecorator for FrameCellDecorator {
         has_more: bool,
         area: render::Area<'_>,
         row_height: Mm,
+        bg_color: Option<style::Color>,
     ) -> Mm {
-        let print_top = self.print_top(row);
-        let print_bottom = self.print_bottom(row, has_more);
-        let print_left = self.print_left(column);
-        let print_right = self.print_right(column);
+        let print_top = false; // self.print_top(row);
+        let print_bottom = false; // self.print_bottom(row, has_more);
+        let print_left = false; //self.print_left(column);
+        let print_right = false; //self.print_right(column);
+
+        let bottom_left;
+        let top_left;
+        let top_right;
+        let bottom_right;
 
         let size = area.size();
-        let line_offset = self.line_style.thickness() / 2.0;
+        let line_offset = self.line_style.thickness() / 10.0; // should be 10.0 for background color to work
 
         let left = Mm::from(0);
         let right = size.width;
@@ -1446,8 +1457,10 @@ impl CellDecorator for FrameCellDecorator {
             Position::new(left, top + line_offset),
             Position::new(right, top + line_offset),
         ];
-        // println!("decorateCell, top_points: {:?}", top_points);
+        top_right = Position::new(right, top + line_offset);
+
         if print_top {
+            println!("decorateCell, top_points: {:?}", top_points);
             area.draw_line(top_points, self.line_style);
             total_height += self.line_style.thickness();
         }
@@ -1455,13 +1468,10 @@ impl CellDecorator for FrameCellDecorator {
             Position::new(right - line_offset, top),
             Position::new(right - line_offset, bottom),
         ];
-        // println!("decorateCell, right_points: {:?}", right_points);
+        bottom_right = Position::new(right - line_offset, bottom);
 
         if print_right {
-            // println!(
-            //     "drawing right line, right: {:?}, bottom: {:?}, top: {:?}, line_offser: {:?}",
-            //     right, bottom, top, line_offset
-            // );
+            println!("decorateCell, right_points: {:?}", right_points);
             area.draw_line(right_points, self.line_style);
         }
 
@@ -1469,8 +1479,10 @@ impl CellDecorator for FrameCellDecorator {
             Position::new(left, bottom - line_offset),
             Position::new(right, bottom - line_offset),
         ];
-        // println!("decorateCell, bottom_points: {:?}", bottom_points);
+
+        bottom_left = Position::new(left, bottom - line_offset);
         if print_bottom {
+            println!("decorateCell, bottom_points: {:?}", bottom_points);
             area.draw_line(bottom_points, self.line_style);
             total_height += self.line_style.thickness();
         }
@@ -1479,14 +1491,25 @@ impl CellDecorator for FrameCellDecorator {
             Position::new(left + line_offset, top),
             Position::new(left + line_offset, bottom),
         ];
-        // println!("decorateCell, left_points: {:?}", left_points);
+
+        top_left = Position::new(left + line_offset, top);
         if print_left {
+            println!("decorateCell, left_points: {:?}", left_points);
             area.draw_line(left_points, self.line_style);
         }
 
         if column + 1 == self.num_columns {
             self.last_row = Some(row);
         }
+
+        let all_points = vec![bottom_left, top_left, top_right, bottom_right];
+        println!("decorateCell, all_points: {:?}", all_points);
+        let ls = LineStyle {
+            bg_color,
+            color: BLACK,
+            ..self.line_style
+        };
+        area.draw_line(all_points, ls);
 
         total_height
     }
@@ -1527,7 +1550,17 @@ impl CellDecorator for FrameCellDecorator {
 /// [`element`]: #method.element
 pub struct TableLayoutRow<'a> {
     table_layout: &'a mut TableLayout,
-    elements: Vec<Box<dyn Element>>,
+    // elements: Vec<Box<dyn Element>>,
+    elements: Vec<TableCell>,
+}
+
+/// [`TableLayout`]: struct.TableLayout.html
+/// [`push`]: #method.push
+/// [`push_element`]: #method.push_element
+/// [`element`]: #method.element
+pub struct TableCell {
+    element: Box<dyn Element>,
+    background_color: Option<style::Color>,
 }
 
 impl<'a> TableLayoutRow<'a> {
@@ -1538,16 +1571,12 @@ impl<'a> TableLayoutRow<'a> {
         }
     }
 
-    /// Adds the given element to this row.
-    pub fn push_element<E: IntoBoxedElement>(&mut self, element: E) {
-        self.elements.push(element.into_boxed_element());
-    }
-
-    /// Adds the given element to this row and returns the row.
-    #[must_use]
-    pub fn element<E: IntoBoxedElement>(mut self, element: E) -> Self {
-        self.push_element(element);
-        self
+    /// Create a cell with  given element and color and add to cells
+    pub fn cell<E: IntoBoxedElement>(&mut self, element: E, color: Option<style::Color>) {
+        self.elements.push(TableCell {
+            element: element.into_boxed_element(),
+            background_color: color,
+        });
     }
 
     /// Tries to append this row to the table.
@@ -1555,16 +1584,16 @@ impl<'a> TableLayoutRow<'a> {
     /// This method fails if the number of elements in this row does not match the number of
     /// columns in the table.
     pub fn push(self) -> Result<(), Error> {
-        self.table_layout.push_row(self.elements)
+        self.table_layout.push_row_with_cells(self.elements)
     }
 }
 
-impl<'a, E: IntoBoxedElement> iter::Extend<E> for TableLayoutRow<'a> {
-    fn extend<I: IntoIterator<Item = E>>(&mut self, iter: I) {
-        self.elements
-            .extend(iter.into_iter().map(|e| e.into_boxed_element()))
-    }
-}
+// impl<'a, E: IntoBoxedElement> iter::Extend<E> for TableLayoutRow<'a> {
+//     fn extend<I: IntoIterator<Item = E>>(&mut self, iter: I) {
+//         self.elements
+//             .extend(iter.into_iter().map(|e| e.into_boxed_element()))
+//     }
+// }
 
 /// Arranges elements in columns and rows.
 ///
@@ -1645,7 +1674,8 @@ impl ColumnWidths {
 /// Table Layout
 pub struct TableLayout {
     column_weights: ColumnWidths,
-    rows: Vec<Vec<Box<dyn Element>>>,
+    // rows: Vec<Vec<Box<dyn Element>>>,
+    rows: Vec<Vec<TableCell>>,
     render_idx: usize,
     cell_decorator: Option<Box<dyn CellDecorator>>,
     header_row_callback_fn: Option<TableHeaderRowCallback>,
@@ -1688,6 +1718,7 @@ impl TableLayout {
         let mut tl = TableLayout {
             column_weights,
             rows: Vec::new(),
+            // rows_with_cells: Vec::new(),
             render_idx: 0,
             cell_decorator: None,
             header_row_callback_fn: None,
@@ -1748,16 +1779,36 @@ impl TableLayout {
     ///
     /// The number of elements in the given vector must match the number of columns.  Otherwise, an
     /// error is returned.
-    pub fn push_row(&mut self, row: Vec<Box<dyn Element>>) -> Result<(), Error> {
-        if row.len() == self.column_weights.len() {
-            self.rows.push(row);
+    // pub fn push_row(&mut self, row: Vec<Box<dyn Element>>) -> Result<(), Error> {
+    //     if row.len() == self.column_weights.len() {
+    //         self.rows.push(row);
+    //         Ok(())
+    //     } else {
+    //         Err(Error::new(
+    //             format!(
+    //                 "Expected {} elements in table row, received {}",
+    //                 self.column_weights.len(),
+    //                 row.len()
+    //             ),
+    //             ErrorKind::InvalidData,
+    //         ))
+    //     }
+    // }
+
+    /// Adds a row to this table.
+    ///
+    /// The number of elements in the given vector must match the number of columns.  Otherwise, an
+    /// error is returned.
+    pub fn push_row_with_cells(&mut self, cells: Vec<TableCell>) -> Result<(), Error> {
+        if cells.len() == self.column_weights.len() {
+            self.rows.push(cells);
             Ok(())
         } else {
             Err(Error::new(
                 format!(
                     "Expected {} elements in table row, received {}",
                     self.column_weights.len(),
-                    row.len()
+                    cells.len()
                 ),
                 ErrorKind::InvalidData,
             ))
@@ -1783,32 +1834,55 @@ impl TableLayout {
             areas.clone()
         };
 
+        let mut row_probable_height = Mm::from(0);
+
+        for (area, element) in cell_areas.iter().zip(self.rows[self.render_idx].iter_mut()) {
+            let element_result = element
+                .element
+                .get_probable_height(style, context, area.clone());
+            row_probable_height = row_probable_height.max(element_result);
+        }
+
+        if let Some(decorator) = &mut self.cell_decorator {
+            for (i, area) in areas.into_iter().enumerate() {
+                let bg_color = self.rows[self.render_idx][i].background_color;
+                // println!("render cell {}, area width {:?}", i, area.size().width);
+                let height = decorator.decorate_cell(
+                    i,
+                    self.render_idx,
+                    result.has_more,
+                    area.clone(),
+                    row_probable_height,
+                    bg_color,
+                );
+                result.size.height = result.size.height.max(height);
+            }
+        }
+
+        println!("in render_row, style: {:?}", style);
         let mut row_height = Mm::from(0);
         for (area, element) in cell_areas.iter().zip(self.rows[self.render_idx].iter_mut()) {
-            let element_result = element.render(context, area.clone(), style)?;
+            let element_result = element.element.render(context, area.clone(), style)?;
             result.has_more |= element_result.has_more;
             row_height = row_height.max(element_result.size.height);
         }
         result.size.height = row_height;
-
-        if let Some(decorator) = &mut self.cell_decorator {
-            for (i, area) in areas.into_iter().enumerate() {
-                // println!("render cell {}, area width {:?}", i, area.size().width);
-                let height =
-                    decorator.decorate_cell(i, self.render_idx, result.has_more, area, row_height);
-                result.size.height = result.size.height.max(height);
-            }
-        }
 
         Ok(result)
     }
 }
 
 fn set_cell_decorator(tl: &mut TableLayout, draw_inner_borders: bool, draw_outer_borders: bool) {
-    tl.set_cell_decorator(FrameCellDecorator::new(
+    let ls = LineStyle::default();
+    // ls.set_thickness(3.0);
+    // FrameCellDecorator::with_line_style(draw_inner_borders,
+    //     draw_outer_borders,
+    //     true,LineStyle::default().set_thickness(10.0))
+    tl.set_cell_decorator(FrameCellDecorator::with_line_style(
         draw_inner_borders,
         draw_outer_borders,
         true,
+        ls,
     ));
 }
 
@@ -1874,7 +1948,10 @@ impl Element for TableLayout {
             let mut row_height = Mm::from(0);
             let areas = area.split_horizontally(&self.column_weights);
             for (area, element) in areas.iter().zip(row.iter()) {
-                let element_height = element.get_probable_height(_style, context, area.clone());
+                let element_height =
+                    element
+                        .element
+                        .get_probable_height(_style, context, area.clone());
                 row_height = row_height.max(element_height);
             }
             height += row_height;
