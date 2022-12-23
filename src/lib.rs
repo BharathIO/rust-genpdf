@@ -673,14 +673,9 @@ impl Document {
         self.decorator = Some(Box::new(decorator));
     }
 
-    /// margin
-    pub fn set_margins(&mut self, top: f64, right: f64, bottom: f64, left: f64) {
-        self.margins = Some(Margins {
-            top: top.into(),
-            right: right.into(),
-            bottom: bottom.into(),
-            left: left.into(),
-        });
+    /// set margin
+    pub fn set_margins(&mut self, margins: Margins) {
+        self.margins = Some(margins);
     }
 
     //// header

@@ -1003,6 +1003,7 @@ impl UOList {
 pub struct UnorderedList {
     layout: LinearLayout,
     bullet: Option<String>,
+    margins: Option<Margins>,
 }
 
 impl UnorderedList {
@@ -1011,6 +1012,7 @@ impl UnorderedList {
         UnorderedList {
             layout: LinearLayout::vertical(),
             bullet: None,
+            margins: None,
         }
     }
 
@@ -1019,12 +1021,12 @@ impl UnorderedList {
         UnorderedList {
             layout: LinearLayout::vertical(),
             bullet: Some(bullet.into()),
+            margins: None,
         }
     }
 
     /// Push UnorderedList/OrderedList to the list.
     pub fn push_list<E: Element + 'static>(&mut self, list: E) {
-        println!("push_list, list");
         let mut point = BulletPoint::new(list);
         point.indent = point.indent / 2.0;
         point.set_bullet("".to_string());
@@ -1045,16 +1047,34 @@ impl UnorderedList {
         self.push(element);
         self
     }
+
+    /// get margins
+    pub fn get_margins(&self) -> Option<Margins> {
+        self.margins
+    }
+
+    /// set margins
+    pub fn set_margins(&mut self, margins: Margins) {
+        self.margins = Some(margins);
+    }
 }
 
 impl Element for UnorderedList {
     fn render(
         &mut self,
         context: &Context,
-        area: render::Area<'_>,
+        mut area: render::Area<'_>,
         style: Style,
     ) -> Result<RenderResult, Error> {
-        self.layout.render(context, area, style)
+        if let Some(margins) = self.get_margins() {
+            area.add_margins(margins);
+        }
+        let mut result = self.layout.render(context, area, style)?;
+        if let Some(margins) = self.margins {
+            result.size.width += margins.left + margins.right;
+            result.size.height += margins.top + margins.bottom;
+        }
+        Ok(result)
     }
 
     fn get_probable_height(
@@ -1063,7 +1083,11 @@ impl Element for UnorderedList {
         context: &Context,
         area: render::Area<'_>,
     ) -> Mm {
-        self.layout.get_probable_height(style, context, area)
+        let mut height = self.layout.get_probable_height(style, context, area);
+        if let Some(margins) = self.get_margins() {
+            height += margins.top + margins.bottom;
+        }
+        height
     }
 }
 
@@ -1143,6 +1167,7 @@ impl<E: Element + 'static> iter::FromIterator<E> for UnorderedList {
 pub struct OrderedList {
     layout: LinearLayout,
     number: usize,
+    margins: Option<Margins>,
 }
 
 impl OrderedList {
@@ -1156,6 +1181,7 @@ impl OrderedList {
         OrderedList {
             layout: LinearLayout::vertical(),
             number: start,
+            margins: None,
         }
     }
 
@@ -1180,16 +1206,34 @@ impl OrderedList {
         self.push(element);
         self
     }
+
+    /// get margins
+    pub fn get_margins(&self) -> Option<Margins> {
+        self.margins
+    }
+
+    /// set margins
+    pub fn set_margins(&mut self, margins: Margins) {
+        self.margins = Some(margins);
+    }
 }
 
 impl Element for OrderedList {
     fn render(
         &mut self,
         context: &Context,
-        area: render::Area<'_>,
+        mut area: render::Area<'_>,
         style: Style,
     ) -> Result<RenderResult, Error> {
-        self.layout.render(context, area, style)
+        if let Some(margins) = self.get_margins() {
+            area.add_margins(margins);
+        }
+        let mut result = self.layout.render(context, area, style)?;
+        if let Some(margins) = self.margins {
+            result.size.width += margins.left + margins.right;
+            result.size.height += margins.top + margins.bottom;
+        }
+        Ok(result)
     }
 
     fn get_probable_height(
@@ -1198,7 +1242,11 @@ impl Element for OrderedList {
         context: &Context,
         area: render::Area<'_>,
     ) -> Mm {
-        self.layout.get_probable_height(style, context, area)
+        let mut height = self.layout.get_probable_height(style, context, area);
+        if let Some(margins) = self.get_margins() {
+            height += margins.top + margins.bottom;
+        }
+        height
     }
 }
 
@@ -1630,6 +1678,10 @@ pub struct TableLayoutRow<'a> {
 pub struct TableCell {
     element: Box<dyn Element>,
     background_color: Option<style::Color>,
+    draw_left_border: bool,
+    draw_right_border: bool,
+    draw_top_border: bool,
+    draw_bottom_border: bool,
 }
 
 impl TableCell {
@@ -1638,7 +1690,35 @@ impl TableCell {
         TableCell {
             element,
             background_color,
+            draw_left_border: true,
+            draw_right_border: true,
+            draw_top_border: true,
+            draw_bottom_border: true,
         }
+    }
+
+    /// set draw_left_border
+    pub fn draw_left_border(mut self, draw_left_border: bool) -> Self {
+        self.draw_left_border = draw_left_border;
+        self
+    }
+
+    /// set draw_right_border
+    pub fn draw_right_border(mut self, draw_right_border: bool) -> Self {
+        self.draw_right_border = draw_right_border;
+        self
+    }
+
+    /// set draw_top_border
+    pub fn draw_top_border(mut self, draw_top_border: bool) -> Self {
+        self.draw_top_border = draw_top_border;
+        self
+    }
+
+    /// set draw_bottom_border
+    pub fn draw_bottom_border(mut self, draw_bottom_border: bool) -> Self {
+        self.draw_bottom_border = draw_bottom_border;
+        self
     }
 }
 
@@ -1655,6 +1735,10 @@ impl<'a> TableLayoutRow<'a> {
         self.cells.push(TableCell {
             element: element.into_boxed_element(),
             background_color: color,
+            draw_left_border: true,
+            draw_right_border: true,
+            draw_top_border: true,
+            draw_bottom_border: true,
         });
         self
     }
