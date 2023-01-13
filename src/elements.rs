@@ -299,7 +299,7 @@ pub struct Paragraph {
     style_applied: bool,
     alignment: Alignment,
     style: style::Style,
-    borders: bool,
+    underline: bool,
     margins: Option<Margins>,
 }
 
@@ -334,8 +334,8 @@ impl Paragraph {
     }
 
     /// set borders
-    pub fn set_borders(&mut self, borders: bool) {
-        self.borders = borders;
+    pub fn set_underline(&mut self, underline: bool) {
+        self.underline = underline;
     }
 
     /// set margins
@@ -350,8 +350,8 @@ impl Paragraph {
     }
 
     /// has bordrs
-    pub fn has_borders(&self) -> bool {
-        self.borders
+    pub fn is_underline(&self) -> bool {
+        self.underline
     }
 
     /// Sets the alignment of this paragraph.
@@ -455,11 +455,18 @@ impl Element for Paragraph {
                 .iter()
                 .map(|s| s.style.metrics(&context.font_cache))
                 .fold(fonts::Metrics::default(), |max, m| max.max(&m));
-            let position = Position::new(self.get_offset(width, area.size().width), 0);
+            let mut height = metrics.line_height;
+            let x = self.get_offset(width, area.size().width);
+            let position = Position::new(x, 0);
 
+            // println!("x {:?}", x);
+            let mut line_width = Mm(0.0);
             if let Some(mut section) = area.text_section(&context.font_cache, position, metrics) {
                 for s in line {
+                    // println!("str: {:?}", s);
                     section.print_str(&s.s, s.style)?;
+                    line_width += s.style.str_width(&context.font_cache, &s.s);
+
                     rendered_len += s.s.len();
                 }
                 rendered_len -= delta;
@@ -470,7 +477,30 @@ impl Element for Paragraph {
             result.size = result
                 .size
                 .stack_vertical(Size::new(width, metrics.line_height));
-            area.add_offset(Position::new(0, metrics.line_height));
+            // println!("rendered_len: {:?}", rendered_len);
+            // println!("result.size: {:?}", result.size);
+
+            if self.is_underline() {
+                let ls = LineStyle::new().with_thickness(0.2);
+                let left = x;
+                let line_offset = ls.thickness() / 2.0;
+                let right = left + line_width;
+                let bottom = metrics.line_height; // + Mm(0.1);
+
+                let bottom_points = vec![
+                    Position::new(left, bottom - line_offset),
+                    Position::new(right, bottom - line_offset),
+                ];
+                // println!(
+                //     "before draw_line, area offset {:?}, x {:?}, left {:?}",
+                //     area.start_x(),
+                //     x,
+                //     left
+                // );
+                area.draw_line(bottom_points, ls);
+                height += ls.thickness();
+            }
+            area.add_offset(Position::new(0, height));
         }
 
         if wrapper.has_overflowed() {
