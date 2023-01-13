@@ -299,7 +299,6 @@ pub struct Paragraph {
     style_applied: bool,
     alignment: Alignment,
     style: style::Style,
-    underline: bool,
     margins: Option<Margins>,
 }
 
@@ -328,14 +327,19 @@ impl Paragraph {
         self.style.set_bold();
     }
 
+    /// Sets the underline effect for this style.
+    pub fn set_underline(&mut self) {
+        self.style.set_underline();
+    }
+
+    /// Returns whether the underline text effect is set.
+    pub fn is_underline(&self) -> bool {
+        self.style.is_underline()
+    }
+
     /// set font italic
     pub fn set_italic(&mut self) {
         self.style.set_italic();
-    }
-
-    /// set borders
-    pub fn set_underline(&mut self, underline: bool) {
-        self.underline = underline;
     }
 
     /// set margins
@@ -347,11 +351,6 @@ impl Paragraph {
     /// returns the current padding
     pub fn get_margins(&self) -> Option<Margins> {
         self.margins
-    }
-
-    /// has bordrs
-    pub fn is_underline(&self) -> bool {
-        self.underline
     }
 
     /// Sets the alignment of this paragraph.
@@ -399,7 +398,12 @@ impl Paragraph {
         if !self.style_applied {
             for s in &mut self.text {
                 // s.style = style.and(s.style);
-                s.style = style.and(self.style);
+                // s.style = style.and(s.style);
+                // s.style = s.style.and(style);
+                // s.style = s.style.and(self.style);
+                // println!("s.style {:?}", s.style);
+                let cs = style.and(self.style);
+                s.style = cs.and(s.style);
             }
             self.style_applied = true;
         }
@@ -463,10 +467,23 @@ impl Element for Paragraph {
             let mut line_width = Mm(0.0);
             if let Some(mut section) = area.text_section(&context.font_cache, position, metrics) {
                 for s in line {
-                    // println!("str: {:?}", s);
                     section.print_str(&s.s, s.style)?;
-                    line_width += s.style.str_width(&context.font_cache, &s.s);
-
+                    let s_width = s.width(&context.font_cache);
+                    println!("s {:?}, {:?}", s.s, s.style);
+                    if s.style.is_underline() {
+                        let ls = LineStyle::new().with_thickness(0.2);
+                        let left = x + line_width;
+                        let line_offset = ls.thickness() / 2.0;
+                        let right = left + s_width;
+                        let bottom = metrics.line_height;
+                        let bottom_points = vec![
+                            Position::new(left, bottom - line_offset),
+                            Position::new(right, bottom - line_offset),
+                        ];
+                        area.draw_line(bottom_points, ls);
+                        height += ls.thickness();
+                    }
+                    line_width += s_width;
                     rendered_len += s.s.len();
                 }
                 rendered_len -= delta;
@@ -480,26 +497,6 @@ impl Element for Paragraph {
             // println!("rendered_len: {:?}", rendered_len);
             // println!("result.size: {:?}", result.size);
 
-            if self.is_underline() {
-                let ls = LineStyle::new().with_thickness(0.2);
-                let left = x;
-                let line_offset = ls.thickness() / 2.0;
-                let right = left + line_width;
-                let bottom = metrics.line_height; // + Mm(0.1);
-
-                let bottom_points = vec![
-                    Position::new(left, bottom - line_offset),
-                    Position::new(right, bottom - line_offset),
-                ];
-                // println!(
-                //     "before draw_line, area offset {:?}, x {:?}, left {:?}",
-                //     area.start_x(),
-                //     x,
-                //     left
-                // );
-                area.draw_line(bottom_points, ls);
-                height += ls.thickness();
-            }
             area.add_offset(Position::new(0, height));
         }
 
@@ -1198,6 +1195,7 @@ pub struct OrderedList {
     layout: LinearLayout,
     number: usize,
     margins: Option<Margins>,
+    bullet_style: Option<Style>,
 }
 
 impl OrderedList {
@@ -1212,6 +1210,7 @@ impl OrderedList {
             layout: LinearLayout::vertical(),
             number: start,
             margins: None,
+            bullet_style: None,
         }
     }
 
@@ -1227,6 +1226,11 @@ impl OrderedList {
     pub fn push<E: Element + 'static>(&mut self, element: E) {
         let mut point = BulletPoint::new(element);
         point.set_bullet(format!("{}.", self.number));
+        point.set_style(self.bullet_style);
+        // match self.bullet_style {
+        //     Some(style) => self.layout.push(point.styled(style)),
+        //     None => self.layout.push(point),
+        // };
         self.layout.push(point);
         self.number += 1;
     }
@@ -1245,6 +1249,16 @@ impl OrderedList {
     /// set margins
     pub fn set_margins(&mut self, margins: Margins) {
         self.margins = Some(margins);
+    }
+
+    /// set bullet style
+    pub fn set_bullet_style(&mut self, style: Style) {
+        self.bullet_style = Some(style);
+    }
+
+    /// get bullet style
+    pub fn get_bullet_style(&self) -> Option<Style> {
+        self.bullet_style
     }
 }
 
@@ -1326,6 +1340,7 @@ pub struct BulletPoint<E: Element> {
     bullet_space: Mm,
     bullet: String,
     bullet_rendered: bool,
+    style: Option<Style>,
 }
 
 impl<E: Element> BulletPoint<E> {
@@ -1337,7 +1352,13 @@ impl<E: Element> BulletPoint<E> {
             bullet_space: Mm::from(2),
             bullet: String::from("–"),
             bullet_rendered: false,
+            style: None,
         }
+    }
+
+    /// set bullet style
+    pub fn set_style(&mut self, style: Option<Style>) {
+        self.style = style;
     }
 
     /// Sets the bullet point symbol for this bullet point.
@@ -1364,6 +1385,10 @@ impl<E: Element> Element for BulletPoint<E> {
         let mut result = self.element.render(context, element_area, style)?;
         result.size.width += self.indent;
         if !self.bullet_rendered {
+            let style = match self.style {
+                Some(s) => style.and(s),
+                None => style,
+            };
             let bullet_width = style.str_width(&context.font_cache, &self.bullet);
             area.print_str(
                 &context.font_cache,
@@ -1371,6 +1396,21 @@ impl<E: Element> Element for BulletPoint<E> {
                 style,
                 self.bullet.as_str(),
             )?;
+
+            // TODO: Add underline support for bullet point
+            /* if style.is_underline() {
+                let ls = LineStyle::new().with_thickness(0.2);
+                let left = self.indent - bullet_width - self.bullet_space + bullet_width;
+                let line_offset = ls.thickness() / 2.0;
+                let right = left + bullet_width;
+                let bottom = Mm(0.0); //metrics.line_height;
+                let bottom_points = vec![
+                    Position::new(left, bottom - line_offset),
+                    Position::new(right, bottom - line_offset),
+                ];
+                area.draw_line(bottom_points, ls);
+                // height += ls.thickness();
+            } */
             self.bullet_rendered = true;
         }
         Ok(result)

@@ -224,6 +224,7 @@ pub struct Style {
     color: Option<Color>,
     is_bold: bool,
     is_italic: bool,
+    is_underline: bool,
 }
 
 impl Style {
@@ -249,6 +250,9 @@ impl Style {
         }
         if style.is_italic {
             self.is_italic = true;
+        }
+        if style.is_underline {
+            self.is_underline = true;
         }
     }
 
@@ -278,6 +282,11 @@ impl Style {
         self.is_italic
     }
 
+    /// Returns whether the underline text effect is set.
+    pub fn is_underline(&self) -> bool {
+        self.is_underline
+    }
+
     /// Returns the font size for this style in points, or 12 if no font size is set.
     pub fn font_size(&self) -> u8 {
         self.font_size.unwrap_or(12)
@@ -302,6 +311,11 @@ impl Style {
     /// Sets the italic effect for this style.
     pub fn set_italic(&mut self) {
         self.is_italic = true;
+    }
+
+    /// Sets the underline effect for this style.
+    pub fn set_underline(&mut self) {
+        self.is_underline = true;
     }
 
     /// Sets the italic effect for this style and returns it.
