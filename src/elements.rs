@@ -162,6 +162,9 @@ impl LinearLayout {
             self.render_idx += 1;
         }
         result.has_more = self.render_idx < self.elements.len();
+        if let Some(margins) = self.margins {
+            result.size.height += margins.top + margins.bottom;
+        }
         Ok(result)
     }
 }
@@ -183,10 +186,15 @@ impl Element for LinearLayout {
         context: &Context,
         area: render::Area<'_>,
     ) -> Mm {
-        self.elements
+        let mut h = self
+            .elements
             .iter_mut()
             .map(|e| e.get_probable_height(style, context, area.clone()))
-            .sum()
+            .sum();
+        if let Some(margins) = self.margins {
+            h += margins.top + margins.bottom;
+        }
+        h
     }
 }
 
@@ -315,6 +323,11 @@ impl Paragraph {
     /// set font size
     pub fn set_font_size(&mut self, size: u8) {
         self.style.set_font_size(size);
+    }
+
+    /// Sets the line spacing factor for this style.
+    pub fn set_line_spacing(&mut self, line_spacing: f64) {
+        self.style.set_line_spacing(line_spacing);
     }
 
     /// Set color
@@ -469,7 +482,7 @@ impl Element for Paragraph {
                 for s in line {
                     section.print_str(&s.s, s.style)?;
                     let s_width = s.width(&context.font_cache);
-                    println!("s {:?}, {:?}", s.s, s.style);
+                    // println!("s {:?}, {:?}", s.s, s.style);
                     if s.style.is_underline() {
                         let ls = LineStyle::new().with_thickness(0.2);
                         let left = x + line_width;
@@ -1007,19 +1020,29 @@ impl UOList {
     /// push element to list
     pub fn push<E: Element + 'static>(&mut self, element: E) {
         match self {
-            UOList::OrderedList(ol) => ol.push(element),
+            UOList::OrderedList(ol) => ol.push(element, None),
             UOList::UnorderedList(ul) => ul.push(element),
         }
     }
     /// push list
-    pub fn push_list(&mut self, l: UOList) {
-        match l {
+    pub fn push_list(&mut self, target_list: UOList) {
+        match target_list {
             UOList::UnorderedList(ul) => match self {
                 UOList::OrderedList(ol2) => ol2.push_list(ul),
                 UOList::UnorderedList(ul2) => ul2.push_list(ul),
             },
-            UOList::OrderedList(ol) => match self {
-                UOList::OrderedList(ol2) => ol2.push_list(ol),
+            UOList::OrderedList(mut ol) => match self {
+                UOList::OrderedList(ol2) => {
+                    // print bullet display
+                    // println!("bullet display: {:?}", ol2.get_bullet_display());
+                    match ol2.get_bullet_display() {
+                        Some(display) => ol.set_prefix(Some(display)),
+                        None => {}
+                    }
+                    // let display = &ol2.get_bullet_display();
+                    // ol.set_prefix(display);
+                    ol2.push_list(ol)
+                }
                 UOList::UnorderedList(ul2) => ul2.push_list(ol),
             },
         }
@@ -1189,13 +1212,17 @@ impl<E: Element + 'static> iter::FromIterator<E> for UnorderedList {
 ///             )
 ///     );
 /// ```
-///
+
 /// [`LinearLayout`]: struct.LinearLayout.html
 pub struct OrderedList {
     layout: LinearLayout,
     number: usize,
     margins: Option<Margins>,
     bullet_style: Option<Style>,
+    element_spacing: Mm,
+    bullet_display: Option<String>,
+    prefix: Option<String>,
+    // parent_bullet_display: Option<String>,
 }
 
 impl OrderedList {
@@ -1211,33 +1238,72 @@ impl OrderedList {
             number: start,
             margins: None,
             bullet_style: None,
+            element_spacing: Mm(0.0),
+            bullet_display: None,
+            prefix: None,
+            // parent_bullet_display: None,
         }
+    }
+
+    /// bullet_margins
+    pub fn set_element_spacing(&mut self, element_spacing: Mm) {
+        self.element_spacing = element_spacing;
+    }
+
+    /// set prefix
+    pub fn set_prefix(&mut self, prefix: Option<String>) {
+        self.prefix = prefix;
+    }
+
+    /// get prefix
+    pub fn get_prefix(&self) -> Option<String> {
+        self.prefix.clone()
+    }
+
+    /// get bullet display
+    pub fn get_bullet_display(&self) -> Option<String> {
+        self.bullet_display.clone()
     }
 
     /// Push OrderedList/UnordredList to the list.
     pub fn push_list<E: Element + 'static>(&mut self, list: E) {
+        // let parent_bullet_display = self.bullet_display.to_owned();
+        // println!(
+        //     "in push_list, parent_bullet_display {:?}",
+        //     parent_bullet_display
+        // );
         let mut point = BulletPoint::new(list);
-        point.indent = point.indent / 2.0;
+        // point.indent = Mm(0.0); //point.indent / 2.0;
+        // point.bullet_space = Mm(0.0);
         point.set_bullet("".to_string());
+        // point.set_bullet_prefix(parent_bullet_display);
         self.layout.push(point);
     }
 
     /// Adds an element to this list.
-    pub fn push<E: Element + 'static>(&mut self, element: E) {
+    pub fn push<E: Element + 'static>(&mut self, element: E, margins: Option<Margins>) {
         let mut point = BulletPoint::new(element);
-        point.set_bullet(format!("{}.", self.number));
+        let bullet = match self.get_prefix() {
+            Some(mut prefix) => {
+                if !prefix.ends_with(".") {
+                    prefix = format!("{}.", prefix);
+                }
+                format!("{}{}", prefix, self.number)
+            }
+            None => format!("{}.", self.number),
+        };
+
+        self.bullet_display = Some(bullet.to_owned());
+        point.set_bullet(bullet);
         point.set_style(self.bullet_style);
-        // match self.bullet_style {
-        //     Some(style) => self.layout.push(point.styled(style)),
-        //     None => self.layout.push(point),
-        // };
+        // point.set_margins(margins);
         self.layout.push(point);
         self.number += 1;
     }
 
     /// Adds an element to this list and returns the list.
     pub fn element<E: Element + 'static>(mut self, element: E) -> Self {
-        self.push(element);
+        self.push(element, None);
         self
     }
 
@@ -1303,7 +1369,7 @@ impl Default for OrderedList {
 impl<E: Element + 'static> iter::Extend<E> for OrderedList {
     fn extend<I: IntoIterator<Item = E>>(&mut self, iter: I) {
         for element in iter {
-            self.push(element);
+            self.push(element, None);
         }
     }
 }
@@ -1341,6 +1407,8 @@ pub struct BulletPoint<E: Element> {
     bullet: String,
     bullet_rendered: bool,
     style: Option<Style>,
+    margins: Option<Margins>,
+    bullet_prefix: Option<String>,
 }
 
 impl<E: Element> BulletPoint<E> {
@@ -1353,7 +1421,18 @@ impl<E: Element> BulletPoint<E> {
             bullet: String::from("–"),
             bullet_rendered: false,
             style: None,
+            margins: None,
+            bullet_prefix: None,
         }
+    }
+
+    /// get bullet to render
+    pub fn get_bullet_to_render(&self) -> String {
+        // match &self.bullet_prefix {
+        //     Some(prefix) => format!("{}{}", prefix, &self.bullet),
+        //     None => format!("{}", &self.bullet),
+        // }
+        format!("{}", &self.bullet)
     }
 
     /// set bullet style
@@ -1366,10 +1445,20 @@ impl<E: Element> BulletPoint<E> {
         self.bullet = bullet.into();
     }
 
+    /// Sets the bullet point prefix
+    pub fn set_bullet_prefix(&mut self, prefix: Option<String>) {
+        self.bullet_prefix = prefix;
+    }
+
     /// Sets the bullet point symbol for this bullet point and returns the bullet point.
     pub fn with_bullet(mut self, bullet: impl Into<String>) -> Self {
         self.set_bullet(bullet);
         self
+    }
+
+    /// set margins
+    pub fn set_margins(&mut self, margins: Option<Margins>) {
+        self.margins = margins;
     }
 }
 
@@ -1377,11 +1466,17 @@ impl<E: Element> Element for BulletPoint<E> {
     fn render(
         &mut self,
         context: &Context,
-        area: render::Area<'_>,
+        mut area: render::Area<'_>,
         style: Style,
     ) -> Result<RenderResult, Error> {
+        // if let Some(element_spacing) = self.element
+        // area.add_margins(Margins::trbl(10, 0, 0, 0));
+        if let Some(mr) = self.margins {
+            area.add_margins(mr);
+        }
         let mut element_area = area.clone();
         element_area.add_offset(Position::new(self.indent, 0));
+
         let mut result = self.element.render(context, element_area, style)?;
         result.size.width += self.indent;
         if !self.bullet_rendered {
@@ -1389,12 +1484,15 @@ impl<E: Element> Element for BulletPoint<E> {
                 Some(s) => style.and(s),
                 None => style,
             };
-            let bullet_width = style.str_width(&context.font_cache, &self.bullet);
+            // let bullet_to_render = self.get_bullet_to_render().as_str();
+            let bullet_width =
+                style.str_width(&context.font_cache, self.get_bullet_to_render().as_str());
+            // let mt = element_area.get_margin_top();
             area.print_str(
                 &context.font_cache,
                 Position::new(self.indent - bullet_width - self.bullet_space, 0),
                 style,
-                self.bullet.as_str(),
+                self.get_bullet_to_render().as_str(),
             )?;
 
             // TODO: Add underline support for bullet point
@@ -1412,6 +1510,9 @@ impl<E: Element> Element for BulletPoint<E> {
                 // height += ls.thickness();
             } */
             self.bullet_rendered = true;
+        }
+        if let Some(mr) = self.margins {
+            result.size.height += mr.top + mr.bottom;
         }
         Ok(result)
     }
