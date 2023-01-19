@@ -102,6 +102,7 @@ pub struct LinearLayout {
     elements: Vec<Box<dyn Element>>,
     render_idx: usize,
     margins: Option<Margins>,
+    list_item_spacing: f64,
 }
 
 impl LinearLayout {
@@ -110,6 +111,7 @@ impl LinearLayout {
             elements: Vec::new(),
             render_idx: 0,
             margins: None,
+            list_item_spacing: 0.0,
         }
     }
 
@@ -127,6 +129,11 @@ impl LinearLayout {
     /// returns the current margins
     pub fn get_margins(&self) -> Option<Margins> {
         self.margins
+    }
+
+    /// set list item margins
+    pub fn set_list_item_spacing(&mut self, spacing: f64) {
+        self.list_item_spacing = spacing;
     }
 
     /// Adds the given element to this layout.
@@ -153,8 +160,13 @@ impl LinearLayout {
         while area.size().height > Mm(0.0) && self.render_idx < self.elements.len() {
             let element_result =
                 self.elements[self.render_idx].render(context, area.clone(), style)?;
-            area.add_offset(Position::new(0, element_result.size.height));
+            println!("list item spacing: {}", self.list_item_spacing);
+            area.add_offset(Position::new(
+                0,
+                element_result.size.height + Mm(self.list_item_spacing),
+            ));
             result.size = result.size.stack_vertical(element_result.size);
+            result.size.height += Mm(self.list_item_spacing);
             if element_result.has_more {
                 result.has_more = true;
                 return Ok(result);
@@ -1020,7 +1032,7 @@ impl UOList {
     /// push element to list
     pub fn push<E: Element + 'static>(&mut self, element: E) {
         match self {
-            UOList::OrderedList(ol) => ol.push(element, None),
+            UOList::OrderedList(ol) => ol.push(element),
             UOList::UnorderedList(ul) => ul.push(element),
         }
     }
@@ -1250,6 +1262,17 @@ impl OrderedList {
         self.element_spacing = element_spacing;
     }
 
+    /// set list_item_margin
+    pub fn set_list_item_spacing(&mut self, spacing: f64) {
+        self.layout.set_list_item_spacing(spacing)
+    }
+
+    /// get list_item_margin
+    // pub fn get_list_item_margin(&self) -> Option<Margins> {
+    //     // self.list_item_margin.clone()
+    //     self.layout.get_list_item_margins()
+    // }
+
     /// set prefix
     pub fn set_prefix(&mut self, prefix: Option<String>) {
         self.prefix = prefix;
@@ -1267,11 +1290,6 @@ impl OrderedList {
 
     /// Push OrderedList/UnordredList to the list.
     pub fn push_list<E: Element + 'static>(&mut self, list: E) {
-        // let parent_bullet_display = self.bullet_display.to_owned();
-        // println!(
-        //     "in push_list, parent_bullet_display {:?}",
-        //     parent_bullet_display
-        // );
         let mut point = BulletPoint::new(list);
         // point.indent = Mm(0.0); //point.indent / 2.0;
         // point.bullet_space = Mm(0.0);
@@ -1281,7 +1299,7 @@ impl OrderedList {
     }
 
     /// Adds an element to this list.
-    pub fn push<E: Element + 'static>(&mut self, element: E, margins: Option<Margins>) {
+    pub fn push<E: Element + 'static>(&mut self, element: E) {
         let mut point = BulletPoint::new(element);
         let bullet = match self.get_prefix() {
             Some(mut prefix) => {
@@ -1303,7 +1321,7 @@ impl OrderedList {
 
     /// Adds an element to this list and returns the list.
     pub fn element<E: Element + 'static>(mut self, element: E) -> Self {
-        self.push(element, None);
+        self.push(element);
         self
     }
 
@@ -1369,7 +1387,7 @@ impl Default for OrderedList {
 impl<E: Element + 'static> iter::Extend<E> for OrderedList {
     fn extend<I: IntoIterator<Item = E>>(&mut self, iter: I) {
         for element in iter {
-            self.push(element, None);
+            self.push(element);
         }
     }
 }
@@ -1426,15 +1444,6 @@ impl<E: Element> BulletPoint<E> {
         }
     }
 
-    /// get bullet to render
-    pub fn get_bullet_to_render(&self) -> String {
-        // match &self.bullet_prefix {
-        //     Some(prefix) => format!("{}{}", prefix, &self.bullet),
-        //     None => format!("{}", &self.bullet),
-        // }
-        format!("{}", &self.bullet)
-    }
-
     /// set bullet style
     pub fn set_style(&mut self, style: Option<Style>) {
         self.style = style;
@@ -1480,35 +1489,37 @@ impl<E: Element> Element for BulletPoint<E> {
         let mut result = self.element.render(context, element_area, style)?;
         result.size.width += self.indent;
         if !self.bullet_rendered {
+            // println!("Bullet self.style: {:?}", self.style);
+            // println!("Bullet style: {:?}", style);
             let style = match self.style {
                 Some(s) => style.and(s),
                 None => style,
             };
-            // let bullet_to_render = self.get_bullet_to_render().as_str();
-            let bullet_width =
-                style.str_width(&context.font_cache, self.get_bullet_to_render().as_str());
+            // println!("Bullet final style: {:?}", style);
+
+            let bullet_width = style.str_width(&context.font_cache, &self.bullet);
             // let mt = element_area.get_margin_top();
+            let x = self.indent - bullet_width - self.bullet_space;
             area.print_str(
                 &context.font_cache,
-                Position::new(self.indent - bullet_width - self.bullet_space, 0),
+                Position::new(x, 0),
                 style,
-                self.get_bullet_to_render().as_str(),
+                &self.bullet,
             )?;
 
-            // TODO: Add underline support for bullet point
-            /* if style.is_underline() {
+            if style.is_underline() {
                 let ls = LineStyle::new().with_thickness(0.2);
-                let left = self.indent - bullet_width - self.bullet_space + bullet_width;
-                let line_offset = ls.thickness() / 2.0;
+                let left = x;
                 let right = left + bullet_width;
-                let bottom = Mm(0.0); //metrics.line_height;
+                let line_offset = ls.thickness() / 2.0;
+                let bottom = style.metrics(&context.font_cache).line_height;
                 let bottom_points = vec![
                     Position::new(left, bottom - line_offset),
                     Position::new(right, bottom - line_offset),
                 ];
                 area.draw_line(bottom_points, ls);
-                // height += ls.thickness();
-            } */
+                result.size.height += ls.thickness();
+            }
             self.bullet_rendered = true;
         }
         if let Some(mr) = self.margins {
