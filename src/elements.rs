@@ -484,7 +484,7 @@ impl Element for Paragraph {
                 .iter()
                 .map(|s| s.style.metrics(&context.font_cache))
                 .fold(fonts::Metrics::default(), |max, m| max.max(&m));
-            let mut height = metrics.line_height;
+            let height = metrics.line_height;
             let x = self.get_offset(width, area.size().width);
             let position = Position::new(x, 0);
 
@@ -506,7 +506,6 @@ impl Element for Paragraph {
                             Position::new(right, bottom - line_offset),
                         ];
                         area.draw_line(bottom_points, ls);
-                        height += ls.thickness();
                     }
                     line_width += s_width;
                     rendered_len += s.s.len();
