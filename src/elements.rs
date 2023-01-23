@@ -160,7 +160,7 @@ impl LinearLayout {
         while area.size().height > Mm(0.0) && self.render_idx < self.elements.len() {
             let element_result =
                 self.elements[self.render_idx].render(context, area.clone(), style)?;
-            println!("list item spacing: {}", self.list_item_spacing);
+            // println!("list item spacing: {}", self.list_item_spacing);
             area.add_offset(Position::new(
                 0,
                 element_result.size.height + Mm(self.list_item_spacing),

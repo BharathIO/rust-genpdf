@@ -169,17 +169,25 @@ impl Renderer {
         &self,
         builtin: printpdf::BuiltinFont,
     ) -> Result<printpdf::IndirectFontRef, Error> {
-        self.doc
-            .add_builtin_font(builtin)
-            .context("Failed to load PDF font")
+        match self.doc.add_builtin_font(builtin) {
+            Ok(font) => Ok(font),
+            Err(e) => Err(Error::new(
+                format!("Failed to load font {}", e),
+                ErrorKind::InvalidFont,
+            )),
+        }
     }
 
     /// Loads the font from the given data, adds it to the generated document and returns a
     /// reference to it.
     pub fn add_embedded_font(&self, data: &[u8]) -> Result<printpdf::IndirectFontRef, Error> {
-        self.doc
-            .add_external_font(data)
-            .context("Failed to load PDF font")
+        match self.doc.add_external_font(data) {
+            Ok(font) => Ok(font),
+            Err(e) => Err(Error::new(
+                format!("Failed to load font {}", e),
+                ErrorKind::InvalidFont,
+            )),
+        }
     }
 
     /// Writes this PDF document to a writer.
@@ -496,6 +504,7 @@ pub struct Area<'p> {
     layer: Layer<'p>,
     origin: Position,
     size: Size,
+    margin_top: Mm,
 }
 
 impl<'p> Area<'p> {
@@ -505,6 +514,7 @@ impl<'p> Area<'p> {
             layer,
             origin,
             size,
+            margin_top: Mm(0.0),
         }
     }
 
@@ -518,6 +528,7 @@ impl<'p> Area<'p> {
             layer,
             origin: self.origin,
             size: self.size,
+            margin_top: self.margin_top,
         }
     }
 
@@ -528,6 +539,7 @@ impl<'p> Area<'p> {
         self.origin.y += margins.top;
         self.size.width -= margins.left + margins.right;
         self.size.height -= margins.top + margins.bottom;
+        self.margin_top = margins.top;
     }
 
     /// Returns the size of this area.
@@ -558,6 +570,11 @@ impl<'p> Area<'p> {
     /// get start y
     pub fn start_y(&self) -> Mm {
         self.origin.y
+    }
+
+    /// get margin_top
+    pub fn get_margin_top(&self) -> Mm {
+        self.margin_top
     }
 
     /// Sets the size of this area.
@@ -814,6 +831,8 @@ impl<'f, 'p> TextSection<'f, 'p> {
             .expect("Could not find PDF font in font cache");
         self.area.layer.set_fill_color(style.color());
         self.set_font(font, style.font_size());
+
+        // println!("codepoints: {:?}", codepoints);
 
         self.area
             .layer

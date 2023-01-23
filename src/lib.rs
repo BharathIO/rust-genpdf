@@ -981,7 +981,7 @@ impl PageDecorator for CustomPageDecorator {
         if let Some(margins) = self.margins {
             area.add_margins(margins);
         }
-        println!("page height: {:?}", area.size().height);
+        // println!("page height: {:?}", area.size().height);
         // Render Header
         if let Some(cb) = &self.header_callback_fn {
             match cb(self.page) {
@@ -999,7 +999,7 @@ impl PageDecorator for CustomPageDecorator {
             match cb(self.page) {
                 Ok(mut element) => {
                     let mut height = footer_area.size().height;
-                    println!("height: {:?}", height);
+                    // println!("height: {:?}", height);
                     let doc_margin_bottom = match self.margins {
                         Some(margins) => margins.bottom,
                         None => Mm::from(0),
@@ -1008,23 +1008,23 @@ impl PageDecorator for CustomPageDecorator {
 
                     let footer_prob_height =
                         element.get_probable_height(style, context, footer_area.clone());
-                    println!("footer_prob_height: {:?}", footer_prob_height);
+                    // println!("footer_prob_height: {:?}", footer_prob_height);
                     let footer_height = footer_prob_height.into();
-                    println!("footer_height: {:?}", footer_height);
+                    // println!("footer_height: {:?}", footer_height);
                     let y_offset = height - footer_height;
-                    println!("y_offset: {:?}", y_offset);
+                    // println!("y_offset: {:?}", y_offset);
                     footer_area.add_offset(Position::new(0, /*  Mm::from(269.4) */ y_offset));
                     let footer_el_result = element.render(context, footer_area.clone(), style)?;
-                    println!(
-                        "footer_el_result.size.height: {:?}",
-                        footer_el_result.size.height
-                    );
+                    // println!(
+                    //     "footer_el_result.size.height: {:?}",
+                    //     footer_el_result.size.height
+                    // );
                     let footer_size = footer_el_result.size.height - height;
-                    println!("footer_size: {:?}", footer_size);
+                    // println!("footer_size: {:?}", footer_size);
                     let height = footer_area.size().height - footer_size;
-                    println!("height: {:?}", height);
+                    // println!("height: {:?}", height);
                     let mut remaining_area_height = height - footer_height;
-                    println!("remaining_area_height: {:?}", remaining_area_height);
+                    // println!("remaining_area_height: {:?}", remaining_area_height);
                     if let Some(mr) = self.margins {
                         remaining_area_height -= mr.top;
                     }

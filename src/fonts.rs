@@ -190,7 +190,17 @@ impl FontData {
         } else {
             RawFontData::Embedded(data.clone())
         };
-        let rt_font = rusttype::Font::from_bytes(data).context("Failed to read rusttype font")?;
+        let data_clone = data.clone();
+
+        let rt_font = match rusttype::Font::try_from_vec(data_clone) {
+            Some(font) => font,
+            None => {
+                return Err(Error::new(
+                    format!("Failed to load font: "),
+                    ErrorKind::InvalidFont,
+                ))
+            }
+        };
         if rt_font.units_per_em() == 0 {
             Err(Error::new(
                 "The font is not scalable",
@@ -491,10 +501,14 @@ fn from_file(
     builtin: Option<Builtin>,
 ) -> Result<FontData, Error> {
     let builtin = builtin.map(|b| b.style(style));
-    FontData::load(
-        &dir.as_ref().join(format!("{}-{}.ttf", name, style)),
-        builtin,
-    )
+    let mut font_file = format!("{}-{}.ttf", name, style);
+    if name.ends_with(".otf") {
+        // substring ".otf" from name
+        let name = &name[..name.len() - 4];
+        font_file = format!("{}-{}.otf", name, style);
+    }
+    println!("Loading font: {}", font_file);
+    FontData::load(&dir.as_ref().join(font_file), builtin)
 }
 
 fn from_file_name(
