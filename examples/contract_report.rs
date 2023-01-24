@@ -74,12 +74,12 @@ fn main() -> Result<(), Error> {
     ol_p1.set_underline();
     // ol_p1.set_margins(Margins::trbl(0, 0, 0, 10));
 
-    let bottom_mr = Margins::trbl(0, 0, 10, 0);
+    // let bottom_mr = Margins::trbl(0, 0, 10, 0);
     // ol_p1.push("The EMPLOYEE, who hereby accepts the appointment and is appointed as a ________________________________________________ for the EMPLOYER.");
-    ol.push(ol_p1, Some(bottom_mr));
+    ol.push(ol_p1);
 
     let sub_text = "The EMPLOYEE, who hereby accepts the appointment and is appointed as a ________________________________________________ for the EMPLOYER.";
-    let mut sub_para = Paragraph::new(sub_text);
+    let sub_para = Paragraph::new(sub_text);
     // sub_para.set_margins(Margins::trbl(2, 0, 5, 5));
 
     let sub_text2 = "AThis agreement will become affective as from ___________ (insert date) and it will continue for an indefinite period until it has been cancelled in terms hereof.";
@@ -95,11 +95,11 @@ fn main() -> Result<(), Error> {
     ol_p2.set_underline();
     // ol_p2.set_margins(Margins::trbl(5, 0, 0, 0));
     // ol_p1.push("The EMPLOYEE, who hereby accepts the appointment and is appointed as a ________________________________________________ for the EMPLOYER.");
-    ol.push(ol_p2, None);
+    ol.push(ol_p2);
 
     let mut app_sub_list = OrderedList::new();
-    app_sub_list.push(sub_para, None);
-    app_sub_list.push(sub_para2, None);
+    app_sub_list.push(sub_para);
+    app_sub_list.push(sub_para2);
 
     ol.push_list(app_sub_list);
 

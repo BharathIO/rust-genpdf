@@ -73,7 +73,7 @@ fn main() -> Result<(), Error> {
     doc.push(genpdf::elements::Break::new(2));
 
     let mut ordered_list = genpdf::elements::OrderedList::new();
-    ordered_list.push(Paragraph::new("ordered first"), None);
+    ordered_list.push(Paragraph::new("ordered first"));
 
     let sub_list1 = UnorderedList::from_iter(vec![
         Paragraph::new("sub list 1"),
@@ -82,7 +82,7 @@ fn main() -> Result<(), Error> {
     ]);
     ordered_list.push_list(sub_list1);
 
-    ordered_list.push(Paragraph::new("ordered second"), None);
+    ordered_list.push(Paragraph::new("ordered second"));
     let sub_list2 = UnorderedList::from_iter(vec![
         Paragraph::new("sub list 4"),
         Paragraph::new("sub list 5"),

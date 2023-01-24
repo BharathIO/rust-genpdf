@@ -509,7 +509,7 @@ pub struct Area<'p> {
 
 impl<'p> Area<'p> {
     fn new(layer: Layer<'p>, origin: Position, size: Size) -> Area<'p> {
-        println!("new area: y {:?}", origin.y);
+        // println!("new area: y {:?}", origin.y);
         Area {
             layer,
             origin,
