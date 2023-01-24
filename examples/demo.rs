@@ -321,10 +321,10 @@ fn main() {
 
         if let Some(color) = get_color(style::ColorName::GREY) {
             let mut hc1 = elements::Paragraph::new("Header Cell 1");
-            hc1.set_bold();
+            hc1.set_bold(true);
             hc1.set_margins(2.into());
             let mut hc2 = elements::Paragraph::new("Header Cell 2");
-            hc2.set_bold();
+            hc2.set_bold(true);
             hc2.set_margins(2.into());
             let hr = ht.row().cell(hc1, Some(color)).cell(hc2, Some(color));
             hr.push().expect("Invalid table row");

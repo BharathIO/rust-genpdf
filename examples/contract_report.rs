@@ -18,14 +18,14 @@ fn main() -> Result<(), Error> {
 
     let lorem_ipsum = "CONTRACT OF ";
     let mut p = Paragraph::new("");
-    p.set_underline();
+    p.set_underline(true);
     p.set_font_size(17);
     p.push(lorem_ipsum);
     // let mut style = style::Style::new();
-    // style.set_underline();
+    // style.set_underline(true);
     // style.set_italic();
     p.push(" EMPLOYMENT");
-    p.set_bold();
+    p.set_bold(true);
     p.set_alignment(genpdf::Alignment::Center);
     // doc.push(Break::new(3));
     p.set_margins(Margins::trbl(15, 0, 0, 0));
@@ -34,7 +34,7 @@ fn main() -> Result<(), Error> {
 
     let mut p2 = Paragraph::new("MADE AND ENTERED INTO BY AND BETWEEN:");
     p2.set_alignment(genpdf::Alignment::Center);
-    p2.set_bold();
+    p2.set_bold(true);
     p2.set_margins(Margins::trbl(7, 0, 0, 0));
     doc.push(p2);
 
@@ -57,21 +57,21 @@ fn main() -> Result<(), Error> {
 
     let str = "WHEREBY THE PARTIES AGREE AS FOLLOWS:";
     let mut p5 = Paragraph::new(str);
-    p5.set_bold();
+    p5.set_bold(true);
     p5.set_margins(Margins::trbl(10, 0, 0, 0));
     doc.push(p5);
 
     let mut bullet_style = Style::default();
-    bullet_style.set_bold();
+    bullet_style.set_bold(true);
     bullet_style.set_color(get_color("RED".into()).unwrap());
-    bullet_style.set_underline();
+    bullet_style.set_underline(true);
 
     let mut ol = OrderedList::new();
     ol.set_bullet_style(bullet_style);
 
     let mut ol_p1 = Paragraph::new("APPOINTMENT");
-    ol_p1.set_bold();
-    ol_p1.set_underline();
+    ol_p1.set_bold(true);
+    ol_p1.set_underline(true);
     // ol_p1.set_margins(Margins::trbl(0, 0, 0, 10));
 
     // let bottom_mr = Margins::trbl(0, 0, 10, 0);
@@ -91,8 +91,8 @@ fn main() -> Result<(), Error> {
     // ll.push(sub_para);
 
     let mut ol_p2 = Paragraph::new("DURATION");
-    ol_p2.set_bold();
-    ol_p2.set_underline();
+    ol_p2.set_bold(true);
+    ol_p2.set_underline(true);
     // ol_p2.set_margins(Margins::trbl(5, 0, 0, 0));
     // ol_p1.push("The EMPLOYEE, who hereby accepts the appointment and is appointed as a ________________________________________________ for the EMPLOYER.");
     ol.push(ol_p2);

@@ -348,13 +348,13 @@ impl Paragraph {
     }
 
     /// set font bold
-    pub fn set_bold(&mut self) {
-        self.style.set_bold();
+    pub fn set_bold(&mut self, bold: bool) {
+        self.style.set_bold(bold);
     }
 
     /// Sets the underline effect for this style.
-    pub fn set_underline(&mut self) {
-        self.style.set_underline();
+    pub fn set_underline(&mut self, underline: bool) {
+        self.style.set_underline(underline);
     }
 
     /// Returns whether the underline text effect is set.
@@ -363,8 +363,8 @@ impl Paragraph {
     }
 
     /// set font italic
-    pub fn set_italic(&mut self) {
-        self.style.set_italic();
+    pub fn set_italic(&mut self, italic: bool) {
+        self.style.set_italic(italic);
     }
 
     /// set margins
@@ -419,7 +419,7 @@ impl Paragraph {
         }
     }
 
-    fn apply_style(&mut self, style: Style) {
+    fn apply_style(&mut self, doc_style: Style) {
         if !self.style_applied {
             for s in &mut self.text {
                 // s.style = style.and(s.style);
@@ -427,8 +427,13 @@ impl Paragraph {
                 // s.style = s.style.and(style);
                 // s.style = s.style.and(self.style);
                 // println!("s.style {:?}", s.style);
-                let cs = style.and(self.style);
-                s.style = cs.and(s.style);
+                let para_style = self.style;
+                let str_style = s.style;
+                let source_style = doc_style.and(para_style);
+                // println!("Before s {:?}, cs {:?}", s, source_style);
+                s.style = source_style.and(str_style);
+                // println!("After s {:?}, s.style {:?}", s, s.style);
+                // s.style = cs.override_with(s.style);
             }
             self.style_applied = true;
         }

@@ -29,11 +29,11 @@ fn main() -> Result<(), Error> {
     );
 
     let mut p = Paragraph::new("1 Footer #{page}");
-    p.set_bold();
+    p.set_bold(true);
     p.set_alignment(genpdf::Alignment::Center);
 
     let mut p2 = Paragraph::new("2 Footer #{page}");
-    p2.set_bold();
+    p2.set_bold(true);
     p2.set_alignment(genpdf::Alignment::Center);
     footer_table
         .row()
@@ -45,19 +45,21 @@ fn main() -> Result<(), Error> {
 
     doc.push(genpdf::elements::Break::new(2));
     // create variable with long text
-    let lorem_ipsum = "CONTRACT OF ";
+    let lorem_ipsum = "Underline ";
     let mut p = Paragraph::new("");
-    p.set_underline();
+    p.set_underline(true);
     p.push(lorem_ipsum);
     let mut style = style::Style::new();
-    style.set_underline();
-    style.set_italic();
-    p.push(" EMPLOYMENT");
+    style.set_underline(false);
+    // style.set_font_size(35);
+    // style.set_italic(true);
+    p.push_styled(" NoUnderline", style);
+    p.push(" NewUnderline");
     // p.push_styled("                         ", style);
     // p.push(" After blank");
     // p.set_font_size(20);
-    p.set_bold();
-    // p.set_underline();
+    p.set_bold(true);
+    // p.set_underline(true);
     p.set_alignment(genpdf::Alignment::Center);
     doc.push(p);
     // let bp1 = BulletPoint::new(Paragraph::new("Bullet Point 1"));

@@ -222,9 +222,9 @@ pub struct Style {
     font_size: Option<u8>,
     line_spacing: Option<f64>,
     color: Option<Color>,
-    is_bold: bool,
-    is_italic: bool,
-    is_underline: bool,
+    is_bold: Option<bool>,
+    is_italic: Option<bool>,
+    is_underline: Option<bool>,
 }
 
 impl Style {
@@ -245,14 +245,15 @@ impl Style {
         if let Some(color) = style.color {
             self.color = Some(color);
         }
-        if style.is_bold {
-            self.is_bold = true;
+
+        if style.is_bold.is_some() {
+            self.is_bold = style.is_bold;
         }
-        if style.is_italic {
-            self.is_italic = true;
+        if style.is_italic.is_some() {
+            self.is_italic = style.is_italic;
         }
-        if style.is_underline {
-            self.is_underline = true;
+        if style.is_underline.is_some() {
+            self.is_underline = style.is_underline;
         }
     }
 
@@ -274,17 +275,20 @@ impl Style {
 
     /// Returns whether the bold text effect is set.
     pub fn is_bold(&self) -> bool {
-        self.is_bold
+        // self.is_bold
+        self.is_bold.unwrap_or(false)
     }
 
     /// Returns whether the italic text effect is set.
     pub fn is_italic(&self) -> bool {
-        self.is_italic
+        // self.is_italic
+        self.is_italic.unwrap_or(false)
     }
 
     /// Returns whether the underline text effect is set.
     pub fn is_underline(&self) -> bool {
-        self.is_underline
+        // self.is_underline
+        self.is_underline.unwrap_or(false)
     }
 
     /// Returns the font size for this style in points, or 12 if no font size is set.
@@ -298,29 +302,29 @@ impl Style {
     }
 
     /// Sets the bold effect for this style.
-    pub fn set_bold(&mut self) {
-        self.is_bold = true;
+    pub fn set_bold(&mut self, bold: bool) {
+        self.is_bold = Some(bold);
     }
 
     /// Sets the bold effect for this style and returns it.
     pub fn bold(mut self) -> Style {
-        self.set_bold();
+        self.set_bold(true);
         self
     }
 
     /// Sets the italic effect for this style.
-    pub fn set_italic(&mut self) {
-        self.is_italic = true;
+    pub fn set_italic(&mut self, italic: bool) {
+        self.is_italic = Some(italic);
     }
 
     /// Sets the underline effect for this style.
-    pub fn set_underline(&mut self) {
-        self.is_underline = true;
+    pub fn set_underline(&mut self, underline: bool) {
+        self.is_underline = Some(underline);
     }
 
     /// Sets the italic effect for this style and returns it.
     pub fn italic(mut self) -> Style {
-        self.set_italic();
+        self.set_italic(true);
         self
     }
 
