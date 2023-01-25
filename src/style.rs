@@ -245,7 +245,9 @@ impl Style {
         if let Some(color) = style.color {
             self.color = Some(color);
         }
-
+        if let Some(line_spacing) = style.line_spacing {
+            self.line_spacing = Some(line_spacing);
+        }
         if style.is_bold.is_some() {
             self.is_bold = style.is_bold;
         }
