@@ -2204,7 +2204,7 @@ fn set_cell_decorator(tl: &mut TableLayout, draw_inner_borders: bool, draw_outer
     tl.set_cell_decorator(FrameCellDecorator::new(
         draw_inner_borders,
         draw_outer_borders,
-        true,
+        false,
     ));
 }
 
