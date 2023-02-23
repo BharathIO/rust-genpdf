@@ -530,10 +530,16 @@ impl Element for Paragraph {
         }
 
         if wrapper.has_overflowed() {
-            return Err(Error::new(
-                "Page overflowed while trying to wrap a string",
-                ErrorKind::PageSizeExceeded,
-            ));
+            // extract text from words
+            let mut text = String::new();
+            for s in &self.words {
+                text.push_str(&s.s);
+            }
+            let msg = format!(
+                "Page overflowed while trying to wrap a string \"{}\", please increase the component's width.",
+                text
+            );
+            return Err(Error::new(msg, ErrorKind::PageSizeExceeded));
         }
 
         // Remove the rendered data from self.words so that we don’t render it again on the next
@@ -1594,7 +1600,7 @@ pub trait CellDecorator {
 pub struct FrameCellDecorator {
     inner: bool,
     outer: bool,
-    cont: bool,
+    // cont: bool,
     line_style: LineStyle,
     num_columns: usize,
     num_rows: usize,
@@ -1604,11 +1610,11 @@ pub struct FrameCellDecorator {
 impl FrameCellDecorator {
     /// Creates a new frame cell decorator with the given settings for inner, outer and
     /// continuation borders.
-    pub fn new(inner: bool, outer: bool, cont: bool) -> FrameCellDecorator {
+    pub fn new(inner: bool, outer: bool) -> FrameCellDecorator {
         FrameCellDecorator {
             inner,
             outer,
-            cont,
+            // cont,
             ..Default::default()
         }
     }
@@ -1617,13 +1623,13 @@ impl FrameCellDecorator {
     pub fn with_line_style(
         inner: bool,
         outer: bool,
-        cont: bool,
+        // cont: bool,
         line_style: impl Into<LineStyle>,
     ) -> FrameCellDecorator {
         Self {
             inner,
             outer,
-            cont,
+            // cont,
             line_style: line_style.into(),
             ..Default::default()
         }
@@ -1655,13 +1661,15 @@ impl FrameCellDecorator {
                 self.inner
             }
         } else {
-            self.cont
+            // self.cont
+            true
         }
     }
 
     fn print_bottom(&self, row: usize, has_more: bool) -> bool {
         if has_more {
-            self.cont
+            // self.cont
+            true
         } else if row + 1 == self.num_rows {
             self.outer
         } else {
@@ -2204,7 +2212,7 @@ fn set_cell_decorator(tl: &mut TableLayout, draw_inner_borders: bool, draw_outer
     tl.set_cell_decorator(FrameCellDecorator::new(
         draw_inner_borders,
         draw_outer_borders,
-        false,
+        // false,
     ));
 }
 
