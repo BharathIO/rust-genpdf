@@ -19,9 +19,13 @@
 //! [`TextSection`]: struct.TextSection.html
 
 use std::cell;
+use std::convert::TryInto;
 use std::io;
 use std::ops;
 use std::rc;
+
+use printpdf::ColorSpace;
+use printpdf::ImageXObject;
 
 use crate::elements::ColumnWidths;
 use crate::error::{Context as _, Error, ErrorKind};
@@ -328,6 +332,45 @@ impl<'p> Layer<'p> {
         Area::new(self.clone(), Position::default(), self.page.size)
     }
 
+    /// remove alpha channel from image x object
+    pub fn remove_alpha_channel_from_image_x_object(image_x_object: ImageXObject) -> ImageXObject {
+        if !matches!(image_x_object.color_space, ColorSpace::Rgba) {
+            println!("Color space is not RGBA, skipping alpha channel removal.");
+            return image_x_object;
+        };
+        println!("Color space is RGBA, removing alpha channel.");
+        let ImageXObject {
+            color_space,
+            image_data,
+            ..
+        } = image_x_object;
+
+        let new_image_data = image_data
+            .chunks(4)
+            .map(|rgba| {
+                let [red, green, blue, alpha]: [u8; 4] = rgba.try_into().ok().unwrap();
+                let alpha = alpha as f64 / 255.0;
+                let new_red = ((1.0 - alpha) * 255.0 + alpha * red as f64) as u8;
+                let new_green = ((1.0 - alpha) * 255.0 + alpha * green as f64) as u8;
+                let new_blue = ((1.0 - alpha) * 255.0 + alpha * blue as f64) as u8;
+                return [new_red, new_green, new_blue];
+            })
+            .collect::<Vec<[u8; 3]>>()
+            .concat();
+
+        let new_color_space = match color_space {
+            ColorSpace::Rgba => ColorSpace::Rgb,
+            ColorSpace::GreyscaleAlpha => ColorSpace::Greyscale,
+            other_type => other_type,
+        };
+
+        ImageXObject {
+            color_space: new_color_space,
+            image_data: new_image_data,
+            ..image_x_object
+        }
+    }
+
     #[cfg(feature = "images")]
     fn add_image(
         &self,
@@ -337,7 +380,13 @@ impl<'p> Layer<'p> {
         rotation: Rotation,
         dpi: Option<f64>,
     ) {
-        let dynamic_image = printpdf::Image::from_dynamic_image(image);
+        let has_alpha = image.color().has_alpha();
+        let mut dynamic_image = printpdf::Image::from_dynamic_image(image);
+        if has_alpha {
+            // turn rbga to rgb
+            dynamic_image.image =
+                Self::remove_alpha_channel_from_image_x_object(dynamic_image.image);
+        }
         let position = self.transform_position(position);
         dynamic_image.add_to_layer(
             self.data.layer.clone(),
