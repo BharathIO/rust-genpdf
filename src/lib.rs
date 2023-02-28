@@ -160,6 +160,8 @@ pub mod error;
 pub mod fonts;
 pub mod render;
 pub mod style;
+/// util
+pub mod utils;
 
 use std::fs;
 use std::io;

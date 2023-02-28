@@ -52,6 +52,7 @@ use crate::fonts;
 use crate::render;
 use crate::style;
 use crate::style::{LineStyle, Style, StyledString};
+use crate::utils::log;
 use crate::wrap;
 use crate::{Alignment, Context, Element, Margins, Mm, Position, RenderResult, Size};
 
@@ -2246,7 +2247,10 @@ impl Element for TableLayout {
                 Ok(mut element) => {
                     let prob_height = element.get_probable_height(style, context, area.clone());
                     if prob_height > area.size().height {
-                        println!("Cannot render header row, not enough space");
+                        log(
+                            "TableHeaderRowSpace",
+                            "Cannot render header row, not enough space",
+                        );
                         result.has_more = true;
                         return Ok(result);
                     }

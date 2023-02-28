@@ -4,6 +4,7 @@ use genpdf::elements::{Paragraph, TableLayout, UnorderedList};
 use genpdf::error::{Error, ErrorKind};
 use genpdf::fonts::{from_files, FontData, FontFamily};
 use genpdf::style::{self, get_color};
+use genpdf::utils::log;
 use genpdf::{CustomPageDecorator, Document, Margins};
 
 fn main() -> Result<(), Error> {
@@ -109,7 +110,7 @@ fn main() -> Result<(), Error> {
     match doc.render_to_file(output_file) {
         Ok(_) => {}
         Err(e) => {
-            println!("Error: {}", e);
+            log("Error while rendering doc to file", &format!("{e}"));
             return Err(Error::new(e.to_string(), ErrorKind::Internal));
         }
     }

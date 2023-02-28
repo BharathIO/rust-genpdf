@@ -31,6 +31,7 @@ use crate::elements::ColumnWidths;
 use crate::error::{Context as _, Error, ErrorKind};
 use crate::fonts;
 use crate::style::{Color, LineStyle, Style};
+use crate::utils::log_msg;
 use crate::{Margins, Mm, Position, Size};
 
 #[cfg(feature = "images")]
@@ -335,10 +336,10 @@ impl<'p> Layer<'p> {
     /// remove alpha channel from image x object
     pub fn remove_alpha_channel_from_image_x_object(image_x_object: ImageXObject) -> ImageXObject {
         if !matches!(image_x_object.color_space, ColorSpace::Rgba) {
-            println!("Color space is not RGBA, skipping alpha channel removal.");
+            log_msg("Color space is not RGBA, skipping alpha channel removal.");
             return image_x_object;
         };
-        println!("Color space is RGBA, removing alpha channel.");
+        log_msg("Color space is RGBA, removing alpha channel.");
         let ImageXObject {
             color_space,
             image_data,
