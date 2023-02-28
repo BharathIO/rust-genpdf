@@ -160,7 +160,7 @@ pub mod error;
 pub mod fonts;
 pub mod render;
 pub mod style;
-/// util
+/// utils mod
 pub mod utils;
 
 use std::fs;
@@ -493,15 +493,6 @@ impl Margins {
             bottom: bottom.into(),
             left: left.into(),
         }
-    }
-    /// override the top margin
-    pub fn set_top(&mut self, top: Mm) {
-        self.top = top.into();
-    }
-
-    /// override the bottom margin
-    pub fn set_bottom(&mut self, bottom: Mm) {
-        self.bottom = bottom.into();
     }
 
     /// Creates a new `Margins` instance from the given vertical (top and bottom) and horizontal

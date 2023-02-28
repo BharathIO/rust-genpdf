@@ -139,9 +139,9 @@ fn main() {
         ));
     }
 
-    rot_table.push_row(heading_row).expect("Invalid row");
-    rot_table.push_row(pos_row).expect("Invalid row");
-    rot_table.push_row(neg_row).expect("Invalid row");
+    rot_table.push_row(heading_row, None).expect("Invalid row");
+    rot_table.push_row(pos_row, None).expect("Invalid row");
+    rot_table.push_row(neg_row, None).expect("Invalid row");
     doc.push(rot_table);
 
     doc.render_to_file(output_file)
