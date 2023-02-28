@@ -26,7 +26,7 @@ use genpdf::Element as _;
 use genpdf::{elements, style};
 
 // const DEFAULT_FONT_NAME: &'static str = "LiberationSans";
-const MONO_FONT_NAME: &'static str = "LiberationMono";
+const MONO_FONT_NAME: &'static str = "ArialUnicode";
 const LOREM_IPSUM: &'static str =
     "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut \
     labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco \
@@ -41,12 +41,12 @@ fn get_default_font_dir() -> PathBuf {
     let mut font_dir = PathBuf::new();
     let dir = env::current_dir().ok();
     if let Some(dir) = dir {
-        font_dir = dir.join("assets/fonts/Liberation/");
+        font_dir = dir.join("/Users/bharath/Work/Fonts/");
     }
     font_dir
 }
 
-const DEFAULT_FONT_NAME: &str = "LiberationSans";
+const DEFAULT_FONT_NAME: &str = "OpenSans";
 pub fn get_default_font() -> Result<FontFamily<FontData>, Error> {
     get_font(DEFAULT_FONT_NAME)
 }
@@ -250,7 +250,7 @@ fn main() {
 
     let mut table =
         elements::TableLayout::new(elements::ColumnWidths::PixelWidths(vec![30.0, 100.0]));
-    table.set_cell_decorator(elements::FrameCellDecorator::new(true, true, true));
+    table.set_cell_decorator(elements::FrameCellDecorator::new(true, true));
     table
         .row()
         .cell(
@@ -312,12 +312,12 @@ fn main() {
 
     let mut table =
         elements::TableLayout::new(elements::ColumnWidths::PixelWidths(vec![50.0, 120.0]));
-    table.set_cell_decorator(elements::FrameCellDecorator::new(true, true, true));
+    table.set_cell_decorator(elements::FrameCellDecorator::new(true, true));
 
     table.register_header_row_callback_fn(|_| {
         let mut ht =
             elements::TableLayout::new(elements::ColumnWidths::PixelWidths(vec![50.0, 120.0]));
-        ht.set_cell_decorator(elements::FrameCellDecorator::new(true, true, true));
+        ht.set_cell_decorator(elements::FrameCellDecorator::new(true, true));
 
         if let Some(color) = get_color(style::ColorName::GREY) {
             let mut hc1 = elements::Paragraph::new("Header Cell 1");

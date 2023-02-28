@@ -62,6 +62,17 @@ fn main() -> Result<(), Error> {
     // p.set_underline(true);
     p.set_alignment(genpdf::Alignment::Center);
     doc.push(p);
+
+    // #[cfg(feature = "images")]
+    // let img = elements::Image::new("examples/images/cover.jpg");
+    // doc.push(img);
+
+    let desc = "The employee agrees to work on any public holiday that would otherwise be a working day for them if required. The employee also agrees not to work on any public holiday unless asked to do so. Select one: The employee will be paid reasonable compensation of  for being available to work on public holidays.The employee’s salary includes compensation for being available to work on public holidays. If the employee doesn’t work on a public holiday, they will get a paid day off if a public holiday falls on a day that would otherwise be a working day for them. If the employee works on a public holiday: - They will be paid their relevant daily pay or average daily pay, plus half that amount again for each hour worked (time and a half). - They will also get a paid day off at a later date unless the employee only ever works for the employer on public holidays. The date of this alternative holiday will be agreed between employer and employee. If they cannot agree, the employer can decide and give the employee at least 14 days’ notice.";
+
+    let mut desc_para = Paragraph::new(desc);
+    desc_para.set_font_size(10);
+    doc.push(desc_para);
+
     // let bp1 = BulletPoint::new(Paragraph::new("Bullet Point 1"));
     // let bp2 = BulletPoint::new(Paragraph::new("Bullet Point 2"));
     // doc.push(bp1);
