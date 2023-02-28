@@ -8,7 +8,7 @@ use std::path;
 
 use image::GenericImageView;
 
-use crate::error::{Context as _, Error, ErrorKind};
+use crate::error::{Context as _, Error};
 use crate::{render, style, Margins};
 use crate::{Alignment, Context, Element, Mm, Position, RenderResult, Rotation, Scale, Size};
 
@@ -87,22 +87,23 @@ impl Image {
 
     /// Creates a new image from an already loaded image.
     pub fn from_dynamic_image(data: image::DynamicImage) -> Result<Self, Error> {
-        if data.color().has_alpha() {
-            Err(Error::new(
-                "Images with an alpha channel are not supported",
-                ErrorKind::InvalidData,
-            ))
-        } else {
-            Ok(Image {
-                data,
-                alignment: Alignment::default(),
-                position: None,
-                scale: Scale::default(),
-                rotation: Rotation::default(),
-                dpi: None,
-                margins: None,
-            })
-        }
+        // remove alpha channel is taken care in renderer's remove_alpha_channel_from_image_x_object method
+        // if data.color().has_alpha() {
+        //     Err(Error::new(
+        //         "Images with an alpha channel are not supported",
+        //         ErrorKind::InvalidData,
+        //     ))
+        // } else {
+        Ok(Image {
+            data,
+            alignment: Alignment::default(),
+            position: None,
+            scale: Scale::default(),
+            rotation: Rotation::default(),
+            dpi: None,
+            margins: None,
+        })
+        // }
     }
 
     fn from_image_reader<R>(reader: image::io::Reader<R>) -> Result<Self, Error>

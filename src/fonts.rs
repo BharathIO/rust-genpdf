@@ -71,6 +71,7 @@ use std::path;
 use crate::error::{Context as _, Error, ErrorKind};
 use crate::render;
 use crate::style::Style;
+use crate::utils::log_msg;
 use crate::Mm;
 
 /// Stores font data that can be referenced by a [`Font`][] or [`FontFamily`][].
@@ -492,7 +493,11 @@ fn from_file(
 ) -> Result<FontData, Error> {
     let builtin = builtin.map(|b| b.style(style));
     let path = format!("{}-{}.ttf", name, style);
-    println!("Loading font {:?} from directory {:?}", path, dir.as_ref());
+    log_msg(&format!(
+        "Accessing font {:?} from directory {:?}",
+        path,
+        dir.as_ref()
+    ));
     FontData::load(&dir.as_ref().join(path), builtin)
 }
 
@@ -502,11 +507,11 @@ fn from_file_name(
     style: FontStyle,
     builtin: Option<Builtin>,
 ) -> Result<FontData, Error> {
-    println!(
-        "Loading font: {:?} from directory {:?} ",
+    log_msg(&format!(
+        "Accessing font: {:?} from directory {:?} ",
         name,
         dir.as_ref()
-    );
+    ));
     let builtin = builtin.map(|b| b.style(style));
     FontData::load(&dir.as_ref().join(format!("{}.ttf", name)), builtin)
 }

@@ -11,6 +11,12 @@ fn main() -> Result<(), Error> {
 
     let mut doc = Document::new(font);
 
+    let p_text = "On April 1, 303, __________________________________ in Sturgis, Michigan, seven men aged 17 to 20 placed ___________________________________ signs all over town that read \"All your base are belong to us. You have no chance to survive make your time.\" They said they were playing an April Fools joke by mimicking the famous Flash animation which ubiquitously depicted the slogan. Not many people who saw the signs were familiar with the joke, however. Many residents were upset that the signs appeared while the U.S. was at war with Iraq, and police chief Eugene Alli said the signs could be \"a borderline terrorist threat depending on what someone interprets it to mean.\" [1]".to_owned();
+    let mut p = Paragraph::default();
+    p.push(p_text);
+    p.set_line_spacing(1.5);
+    doc.push(p);
+
     let mut d = CustomPageDecorator::new();
     d.set_margins(Some(Margins::trbl(10, 20, 10, 30)));
     doc.set_page_decorator(d);
@@ -27,24 +33,24 @@ fn main() -> Result<(), Error> {
     p.push(" EMPLOYMENT");
     p.set_bold(true);
     p.set_alignment(genpdf::Alignment::Center);
-    // doc.push(Break::new(3));
+    // // doc.push(Break::new(3));
     p.set_margins(Margins::trbl(15, 0, 0, 0));
-    doc.push(p);
-    // doc.push(Break::new(2));
+    // doc.push(p);
+    // // doc.push(Break::new(2));
 
     let mut p2 = Paragraph::new("MADE AND ENTERED INTO BY AND BETWEEN:");
     p2.set_alignment(genpdf::Alignment::Center);
     p2.set_bold(true);
     p2.set_margins(Margins::trbl(7, 0, 0, 0));
-    doc.push(p2);
+    // doc.push(p2);
 
     let mut p3 = Paragraph::default();
     p3.set_margins(Margins::trbl(10, 0, 0, 0));
     for _ in 0..80 {
         p3.push("_");
     }
-    doc.push(p3);
-    doc.push(Paragraph::new("with address at:"));
+    // doc.push(p3);
+    // doc.push(Paragraph::new("with address at:"));
 
     for _ in 0..2 {
         let mut p4 = Paragraph::default();
@@ -52,14 +58,14 @@ fn main() -> Result<(), Error> {
         for _ in 0..80 {
             p4.push("_");
         }
-        doc.push(p4);
+        // doc.push(p4);
     }
 
     let str = "WHEREBY THE PARTIES AGREE AS FOLLOWS:";
     let mut p5 = Paragraph::new(str);
     p5.set_bold(true);
     p5.set_margins(Margins::trbl(10, 0, 0, 0));
-    doc.push(p5);
+    // doc.push(p5);
 
     let mut bullet_style = Style::default();
     bullet_style.set_bold(true);
@@ -104,7 +110,7 @@ fn main() -> Result<(), Error> {
     ol.push_list(app_sub_list);
 
     ol.set_margins(Margins::trbl(10, 0, 0, 0));
-    doc.push(ol);
+    // doc.push(ol);
 
     match doc.render_to_file(output_file) {
         Ok(_) => {}

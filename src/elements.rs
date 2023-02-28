@@ -52,6 +52,7 @@ use crate::fonts;
 use crate::render;
 use crate::style;
 use crate::style::{LineStyle, Style, StyledString};
+use crate::utils::log;
 use crate::wrap;
 use crate::{Alignment, Context, Element, Margins, Mm, Position, RenderResult, Size};
 
@@ -530,10 +531,16 @@ impl Element for Paragraph {
         }
 
         if wrapper.has_overflowed() {
-            return Err(Error::new(
-                "Page overflowed while trying to wrap a string",
-                ErrorKind::PageSizeExceeded,
-            ));
+            // extract text from words
+            let mut text = String::new();
+            for s in &self.words {
+                text.push_str(&s.s);
+            }
+            let msg = format!(
+                "Page overflowed while trying to wrap a string \"{}\", please increase the component's width.",
+                text
+            );
+            return Err(Error::new(msg, ErrorKind::PageSizeExceeded));
         }
 
         // Remove the rendered data from self.words so that we don’t render it again on the next
@@ -1502,7 +1509,6 @@ impl<E: Element> Element for BulletPoint<E> {
             // println!("Bullet final style: {:?}", style);
 
             let bullet_width = style.str_width(&context.font_cache, &self.bullet);
-            // let mt = element_area.get_margin_top();
             let x = self.indent - bullet_width - self.bullet_space;
             area.print_str(
                 &context.font_cache,
@@ -1594,7 +1600,7 @@ pub trait CellDecorator {
 pub struct FrameCellDecorator {
     inner: bool,
     outer: bool,
-    cont: bool,
+    // cont: bool,
     line_style: LineStyle,
     num_columns: usize,
     num_rows: usize,
@@ -1604,11 +1610,11 @@ pub struct FrameCellDecorator {
 impl FrameCellDecorator {
     /// Creates a new frame cell decorator with the given settings for inner, outer and
     /// continuation borders.
-    pub fn new(inner: bool, outer: bool, cont: bool) -> FrameCellDecorator {
+    pub fn new(inner: bool, outer: bool) -> FrameCellDecorator {
         FrameCellDecorator {
             inner,
             outer,
-            cont,
+            // cont,
             ..Default::default()
         }
     }
@@ -1617,13 +1623,13 @@ impl FrameCellDecorator {
     pub fn with_line_style(
         inner: bool,
         outer: bool,
-        cont: bool,
+        // cont: bool,
         line_style: impl Into<LineStyle>,
     ) -> FrameCellDecorator {
         Self {
             inner,
             outer,
-            cont,
+            // cont,
             line_style: line_style.into(),
             ..Default::default()
         }
@@ -1655,13 +1661,15 @@ impl FrameCellDecorator {
                 self.inner
             }
         } else {
-            self.cont
+            // self.cont
+            true
         }
     }
 
     fn print_bottom(&self, row: usize, has_more: bool) -> bool {
         if has_more {
-            self.cont
+            // self.cont
+            true
         } else if row + 1 == self.num_rows {
             self.outer
         } else {
@@ -1934,7 +1942,7 @@ impl<'a> TableLayoutRow<'a> {
     /// This method fails if the number of elements in this row does not match the number of
     /// columns in the table.
     pub fn push(self) -> Result<(), Error> {
-        self.table_layout.push_row(self.cells)
+        self.table_layout.push_row(self.cells, None)
     }
 }
 
@@ -2014,10 +2022,17 @@ impl ColumnWidths {
         }
     }
 }
+
+/// Table Row
+pub struct TableRow {
+    cells: Vec<TableCell>,
+    row_height: Option<i32>,
+}
+
 /// Table Layout
 pub struct TableLayout {
     column_weights: ColumnWidths,
-    rows: Vec<Vec<TableCell>>,
+    rows: Vec<TableRow>,
     render_idx: usize,
     cell_decorator: Option<Box<dyn CellDecorator>>,
     header_row_callback_fn: Option<TableHeaderRowCallback>,
@@ -2120,9 +2135,14 @@ impl TableLayout {
     ///
     /// The number of elements in the given vector must match the number of columns.  Otherwise, an
     /// error is returned.
-    pub fn push_row(&mut self, cells: Vec<TableCell>) -> Result<(), Error> {
+    pub fn push_row(
+        &mut self,
+        cells: Vec<TableCell>,
+        row_height: Option<i32>,
+    ) -> Result<(), Error> {
         if cells.len() == self.column_weights.len() {
-            self.rows.push(cells);
+            let r = TableRow { cells, row_height };
+            self.rows.push(r);
             Ok(())
         } else {
             Err(Error::new(
@@ -2159,14 +2179,18 @@ impl TableLayout {
         for (area, cell) in cell_areas
             .clone()
             .iter()
-            .zip(self.rows[self.render_idx].iter_mut())
+            .zip(self.rows[self.render_idx].cells.iter_mut())
         {
             let el_probable_height = cell
                 .element
                 .get_probable_height(style, context, area.clone());
             row_probable_height = row_probable_height.max(el_probable_height);
         }
-        // println!("render_row: row_probable_height: {:?}", row_probable_height);
+        if let Some(rh) = self.rows[self.render_idx].row_height {
+            if rh > row_probable_height.0 as i32 {
+                row_probable_height = rh.into();
+            }
+        }
         if row_probable_height > area.size().height {
             result.has_more = true;
             return Ok(result);
@@ -2174,7 +2198,7 @@ impl TableLayout {
 
         if let Some(decorator) = &mut self.cell_decorator {
             for (i, area) in cell_areas.clone().into_iter().enumerate() {
-                let cell_bg_color = self.rows[self.render_idx][i].background_color;
+                let cell_bg_color = self.rows[self.render_idx].cells[i].background_color;
                 let height = decorator.decorate_cell(
                     i,
                     self.render_idx,
@@ -2188,14 +2212,20 @@ impl TableLayout {
         }
 
         let mut row_height = Mm::from(0);
-        for (area, cell) in cell_areas.iter().zip(self.rows[self.render_idx].iter_mut()) {
+        for (area, cell) in cell_areas
+            .iter()
+            .zip(self.rows[self.render_idx].cells.iter_mut())
+        {
             let element_result = cell.element.render(context, area.clone(), style)?;
             result.has_more |= element_result.has_more;
             row_height = row_height.max(element_result.size.height);
         }
         result.size.height = row_height;
-        // println!("render_row: actual row_height: {:?}", row_height);
-
+        if let Some(rh) = self.rows[self.render_idx].row_height {
+            if rh > row_height.0 as i32 {
+                result.size.height = rh.into();
+            }
+        }
         Ok(result)
     }
 }
@@ -2204,7 +2234,7 @@ fn set_cell_decorator(tl: &mut TableLayout, draw_inner_borders: bool, draw_outer
     tl.set_cell_decorator(FrameCellDecorator::new(
         draw_inner_borders,
         draw_outer_borders,
-        false,
+        // false,
     ));
 }
 
@@ -2238,7 +2268,10 @@ impl Element for TableLayout {
                 Ok(mut element) => {
                     let prob_height = element.get_probable_height(style, context, area.clone());
                     if prob_height > area.size().height {
-                        println!("Cannot render header row, not enough space");
+                        log(
+                            "TableHeaderRowSpace",
+                            "Cannot render header row, not enough space",
+                        );
                         result.has_more = true;
                         return Ok(result);
                     }
@@ -2275,7 +2308,7 @@ impl Element for TableLayout {
         // calculate table height using rows
         for row in self.rows.iter_mut() {
             let mut row_height = Mm::from(0);
-            for cell in row.iter_mut() {
+            for cell in row.cells.iter_mut() {
                 let cell_height = cell
                     .element
                     .get_probable_height(style, context, area.clone());
