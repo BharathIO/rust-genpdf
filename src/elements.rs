@@ -446,14 +446,15 @@ fn replace_page_number(
     context: &Context,
 ) -> collections::VecDeque<StyledString> {
     let mut words_copy = words.clone();
-    // loop words and replace #{page} with context.page_number
+    // loop words and replace #{page} with context.page_number & remove new lines
     for i in 0..words.len() {
         let mut s = words[i].s.clone();
+        s = s.replace("\n", "");
         if s.contains(&"#{page}") {
             let page = context.page_number;
             s = s.replace(&"#{page}", &page.to_string());
-            words_copy[i].s = s.into();
         }
+        words_copy[i].s = s.into();
     }
     words_copy
 }
