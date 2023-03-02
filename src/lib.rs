@@ -172,7 +172,9 @@ use derive_more::{
 };
 
 use error::Context as _;
+use style::LineStyle;
 use style::Style;
+use style::BLACK;
 
 /// A length measured in millimeters.
 ///
@@ -928,12 +930,39 @@ impl PageDecorator for SimplePageDecorator {
 type CustomHeaderCallback = Box<dyn Fn(usize) -> Result<Box<dyn Element>, error::Error>>;
 type CustomFooterCallback = Box<dyn Fn(usize) -> Result<Box<dyn Element>, error::Error>>;
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
+/// Prepares a page of a document with margins, a header and a footer.
+pub struct Borders {
+    /// The top margin of the area.
+    top: Mm,
+    /// The right margin of the area.
+    right: Mm,
+    /// The bottom margin of the area.
+    bottom: Mm,
+    /// The left margin of the area.
+    left: Mm,
+}
+
+impl Borders {
+    /// Creates a new `Margins` instance with all four margins set to the given value.
+    pub fn all(all: impl Into<Mm>) -> Borders {
+        let all = all.into();
+        Borders {
+            top: all,
+            right: all,
+            bottom: all,
+            left: all,
+        }
+    }
+}
+
 /// Custom header and footer along with margins.
 pub struct CustomPageDecorator {
     page: usize,
     margins: Option<Margins>,
     header_callback_fn: Option<CustomHeaderCallback>,
     footer_callback_fn: Option<CustomFooterCallback>,
+    borders: Option<Borders>,
 }
 
 impl CustomPageDecorator {
@@ -944,12 +973,18 @@ impl CustomPageDecorator {
             margins: None,
             header_callback_fn: None,
             footer_callback_fn: None,
+            borders: None,
         }
     }
 
     /// set margins
     pub fn set_margins(&mut self, margins: Option<Margins>) {
         self.margins = margins;
+    }
+
+    /// set borders
+    pub fn set_borders(&mut self, borders: Option<Borders>) {
+        self.borders = borders;
     }
 
     /// register header callback
@@ -983,7 +1018,58 @@ impl PageDecorator for CustomPageDecorator {
         if let Some(margins) = self.margins {
             area.add_margins(margins);
         }
-        // println!("page height: {:?}", area.size().height);
+
+        // draw a rectangle with borders
+        // if let Some(borders) = self.borders {
+
+        let mut area_width = area.size().width;
+        let mut area_height = area.size().height;
+        if let Some(margins) = self.margins {
+            // log_msg(&format!("decoratePage borders: {:?}", borders));
+            // area_width = area_width - margins.left - margins.right;
+            // area_height = area_height - margins.top - margins.bottom;
+        }
+
+        let left = Mm::from(0.0);
+        let right = area_width; //Mm::from(100.0);
+        let top = Mm::from(0.0);
+        let bottom = area_height; // Mm::from(100.0);
+
+        let line_thickness = Mm::from(0.0);
+        let line_offset = Mm::from(0.0); // line_thickness / 2.0;
+
+        // let filled_shape_points = vec![bottom_left, top_left, top_right, bottom_right];
+        let line_style = LineStyle::default().with_thickness(line_thickness);
+
+        // area.draw_line(
+        //     filled_shape_points,
+        //     LineStyle::new().with_thickness(line_thickness),
+        // );
+        let left_points = vec![
+            Position::new(left + line_offset, top),
+            Position::new(left + line_offset, bottom),
+        ];
+        area.draw_line(left_points, line_style);
+
+        let bottom_points = vec![
+            Position::new(left, bottom - line_offset),
+            Position::new(right, bottom - line_offset),
+        ];
+        area.draw_line(bottom_points, line_style);
+
+        let top_points = vec![
+            Position::new(left, top + line_offset),
+            Position::new(right, top + line_offset),
+        ];
+        // println!("decorateCell, top_points: {:?}", top_points);
+        area.draw_line(top_points, line_style);
+        let right_points = vec![
+            Position::new(right - line_offset, top),
+            Position::new(right - line_offset, bottom),
+        ];
+
+        area.draw_line(right_points, line_style);
+
         // Render Header
         if let Some(cb) = &self.header_callback_fn {
             match cb(self.page) {

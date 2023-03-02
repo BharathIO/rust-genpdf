@@ -5,7 +5,7 @@ use genpdf::error::{Error, ErrorKind};
 use genpdf::fonts::{from_files, FontData, FontFamily};
 use genpdf::style::{self, get_color};
 use genpdf::utils::log;
-use genpdf::{CustomPageDecorator, Document, Margins};
+use genpdf::{Borders, CustomPageDecorator, Document, Margins};
 
 fn main() -> Result<(), Error> {
     let font_dir = "/Users/bharath/Work/Fonts/".to_string();
@@ -18,31 +18,42 @@ fn main() -> Result<(), Error> {
     let mut doc = Document::new(font);
     // doc.add_font_family(chinese_font);
 
-    let mut d = CustomPageDecorator::new();
-    d.set_margins(Some(Margins::all(10.0)));
-    doc.set_page_decorator(d);
     let output_file = "footer.pdf";
 
-    let mut footer_table = TableLayout::new_with_borders(
-        genpdf::elements::ColumnWidths::PixelWidths(vec![95.0, 95.0]),
-        true,
-        true,
-    );
-
-    let mut p = Paragraph::new("1 Footer #{page}");
-    p.set_bold(true);
-    p.set_alignment(genpdf::Alignment::Center);
-
-    let mut p2 = Paragraph::new("2 Footer #{page}");
-    p2.set_bold(true);
-    p2.set_alignment(genpdf::Alignment::Center);
-    footer_table
-        .row()
-        .cell(p, get_color(genpdf::style::ColorName::GREY))
-        .cell(p2, get_color(genpdf::style::ColorName::GREY))
-        .push()?;
-    footer_table.set_margins(Margins::trbl(2.0, 0.0, 0.0, 0.0));
     // doc.push(footer_table);
+
+    let mut d = CustomPageDecorator::new();
+    d.set_borders(Some(Borders::all(5.0)));
+    d.set_margins(Some(Margins::all(10.0)));
+    d.register_footer_callback_fn(|_| {
+        let mut footer_table = TableLayout::new_with_borders(
+            genpdf::elements::ColumnWidths::PixelWidths(vec![95.0, 95.0]),
+            true,
+            true,
+        );
+
+        let mut p = Paragraph::new("1 Footer #{page}");
+        p.set_bold(true);
+        p.set_alignment(genpdf::Alignment::Center);
+
+        let mut p2 = Paragraph::new("2 Footer #{page}");
+        p2.set_bold(true);
+        p2.set_alignment(genpdf::Alignment::Center);
+        footer_table
+            .row()
+            .cell(p.clone(), get_color(genpdf::style::ColorName::GREY))
+            .cell(p2.clone(), get_color(genpdf::style::ColorName::GREY))
+            .push()?;
+
+        footer_table
+            .row()
+            .cell(p, get_color(genpdf::style::ColorName::GREY))
+            .cell(p2, get_color(genpdf::style::ColorName::GREY))
+            .push()?;
+        footer_table.set_margins(Margins::trbl(2.0, 0.0, 0.0, 0.0));
+        Ok(footer_table)
+    });
+    doc.set_page_decorator(d);
 
     doc.push(genpdf::elements::Break::new(2));
     // create variable with long text
