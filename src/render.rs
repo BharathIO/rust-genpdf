@@ -408,7 +408,7 @@ impl<'p> Layer<'p> {
             .into_iter()
             .map(|pos| (self.transform_position(pos).into(), false))
             .collect();
-        // println!("single line shape line_points: {:?}", line_points);
+        // log("add_line_shape", &format!("{:?}", line_points));
         let line = printpdf::Line {
             points: line_points,
             is_closed: false,
@@ -589,7 +589,7 @@ impl<'p> Area<'p> {
         self.origin.y += margins.top;
         self.size.width -= margins.left + margins.right;
         self.size.height -= margins.top + margins.bottom;
-        self.margin_top = margins.top;
+        self.margin_top += margins.top;
     }
 
     /// Returns the size of this area.

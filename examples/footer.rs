@@ -23,34 +23,56 @@ fn main() -> Result<(), Error> {
     // doc.push(footer_table);
 
     let mut d = CustomPageDecorator::new();
-    d.set_borders(Some(Borders::all(5.0)));
+
+    d.set_borders(Some(Borders::all(0.0)));
     d.set_margins(Some(Margins::all(10.0)));
     d.register_footer_callback_fn(|_| {
         let mut footer_table = TableLayout::new_with_borders(
-            genpdf::elements::ColumnWidths::PixelWidths(vec![95.0, 95.0]),
+            genpdf::elements::ColumnWidths::PixelWidths(vec![90.0, 90.0]),
             true,
             true,
         );
 
-        let mut p = Paragraph::new("1 Footer #{page}");
-        p.set_bold(true);
-        p.set_alignment(genpdf::Alignment::Center);
+        for i in 0..5 {
+            let mut p = Paragraph::new(format!("Footer Row {} Col 1", i + 1));
+            p.set_bold(true);
+            p.set_alignment(genpdf::Alignment::Center);
 
-        let mut p2 = Paragraph::new("2 Footer #{page}");
-        p2.set_bold(true);
-        p2.set_alignment(genpdf::Alignment::Center);
-        footer_table
-            .row()
-            .cell(p.clone(), get_color(genpdf::style::ColorName::GREY))
-            .cell(p2.clone(), get_color(genpdf::style::ColorName::GREY))
-            .push()?;
+            let mut p2 = Paragraph::new(format!("Footer Row {} Col 2", i + 1));
+            p2.set_bold(true);
+            p2.set_alignment(genpdf::Alignment::Center);
+            footer_table
+                .row()
+                .cell(p, get_color(genpdf::style::ColorName::GREY))
+                .cell(p2, get_color(genpdf::style::ColorName::GREY))
+                .push()?;
+        }
+        // footer_table.set_margins(Margins::trbl(2.0, 0.0, 0.0, 0.0));
+        Ok(footer_table)
+    });
+    d.register_header_callback_fn(|_| {
+        let mut footer_table = TableLayout::new_with_borders(
+            genpdf::elements::ColumnWidths::PixelWidths(vec![90.0, 90.0]),
+            true,
+            true,
+        );
 
-        footer_table
-            .row()
-            .cell(p, get_color(genpdf::style::ColorName::GREY))
-            .cell(p2, get_color(genpdf::style::ColorName::GREY))
-            .push()?;
-        footer_table.set_margins(Margins::trbl(2.0, 0.0, 0.0, 0.0));
+        for i in 0..3 {
+            let mut p = Paragraph::new(format!("Header Row {} Col 1", i + 1));
+            p.set_bold(true);
+            p.set_alignment(genpdf::Alignment::Center);
+
+            let mut p2 = Paragraph::new(format!("Header Row {} Col 2", i + 1));
+            p2.set_bold(true);
+            p2.set_alignment(genpdf::Alignment::Center);
+            footer_table
+                .row()
+                .cell(p, get_color(genpdf::style::ColorName::GREY))
+                .cell(p2, get_color(genpdf::style::ColorName::GREY))
+                .push()?;
+        }
+        footer_table.set_margins(Margins::trbl(2.0, 0.0, 0.0, 2.0));
+        // footer_table.set_margins(Margins::trbl(2.0, 0.0, 0.0, 0.0));
         Ok(footer_table)
     });
     doc.set_page_decorator(d);
@@ -116,7 +138,30 @@ fn main() -> Result<(), Error> {
     ordered_list.push_list(sub_list2);
     unordered_list.push_list(ordered_list);
 
-    // doc.push(unordered_list);
+    doc.push(unordered_list);
+
+    // data table
+    let mut data_table = TableLayout::new_with_borders(
+        genpdf::elements::ColumnWidths::PixelWidths(vec![90.0, 90.0]),
+        true,
+        true,
+    );
+
+    for i in 0..30 {
+        let mut p = Paragraph::new(format!("Data Row {} Col 1", i + 1));
+        p.set_bold(true);
+        p.set_alignment(genpdf::Alignment::Center);
+
+        let mut p2 = Paragraph::new(format!("Data Row {} Col 2", i + 1));
+        p2.set_bold(true);
+        p2.set_alignment(genpdf::Alignment::Center);
+        data_table
+            .row()
+            .cell(p, get_color(genpdf::style::ColorName::CYAN))
+            .cell(p2, get_color(genpdf::style::ColorName::PURPLE))
+            .push()?;
+    }
+    doc.push(data_table);
 
     match doc.render_to_file(output_file) {
         Ok(_) => {}
