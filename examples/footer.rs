@@ -3,9 +3,9 @@ use std::iter::FromIterator;
 use genpdf::elements::{Paragraph, TableLayout, UnorderedList};
 use genpdf::error::{Error, ErrorKind};
 use genpdf::fonts::{from_files, FontData, FontFamily};
-use genpdf::style::{self, get_color};
+use genpdf::style::{self, get_color, ORANGE};
 use genpdf::utils::log;
-use genpdf::{Borders, CustomPageDecorator, Document, Margins};
+use genpdf::{Border, Borders, CustomPageDecorator, Document, Margins};
 
 fn main() -> Result<(), Error> {
     let font_dir = "/Users/bharath/Work/Fonts/".to_string();
@@ -24,8 +24,18 @@ fn main() -> Result<(), Error> {
 
     let mut d = CustomPageDecorator::new();
 
-    d.set_borders(Some(Borders::all(0.0)));
-    d.set_margins(Some(Margins::all(10.0)));
+    let borders = Borders {
+        top: Some(Border {
+            thickness: Some(2.5.into()),
+            color: Some(ORANGE),
+        }),
+        right: None,
+        bottom: None,
+        left: None,
+    };
+
+    d.set_borders(Some(borders));
+    d.set_margins(Some(Margins::all(1.5)));
     d.register_footer_callback_fn(|_| {
         let mut footer_table = TableLayout::new_with_borders(
             genpdf::elements::ColumnWidths::PixelWidths(vec![90.0, 90.0]),
@@ -71,7 +81,7 @@ fn main() -> Result<(), Error> {
                 .cell(p2, get_color(genpdf::style::ColorName::GREY))
                 .push()?;
         }
-        footer_table.set_margins(Margins::trbl(2.0, 0.0, 0.0, 2.0));
+        footer_table.set_margins(Margins::trbl(2.0, 0.0, 2.0, 0.0));
         // footer_table.set_margins(Margins::trbl(2.0, 0.0, 0.0, 0.0));
         Ok(footer_table)
     });
@@ -146,6 +156,7 @@ fn main() -> Result<(), Error> {
         true,
         true,
     );
+    data_table.set_margins(Margins::trbl(2.0, 0.0, 2.0, 0.0));
 
     for i in 0..30 {
         let mut p = Paragraph::new(format!("Data Row {} Col 1", i + 1));
