@@ -716,6 +716,15 @@ impl From<Color> for LineStyle {
     }
 }
 
+impl From<Mm> for LineStyle {
+    fn from(mm: Mm) -> LineStyle {
+        LineStyle {
+            thickness: mm,
+            ..LineStyle::default()
+        }
+    }
+}
+
 impl LineStyle {
     /// Creates a new line style with default values.
     pub fn new() -> LineStyle {

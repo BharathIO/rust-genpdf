@@ -3,9 +3,9 @@ use std::iter::FromIterator;
 use genpdf::elements::{Paragraph, TableLayout, UnorderedList};
 use genpdf::error::{Error, ErrorKind};
 use genpdf::fonts::{from_files, FontData, FontFamily};
-use genpdf::style::{self, get_color, ORANGE};
+use genpdf::style::{self, get_color, LineStyle, ORANGE};
 use genpdf::utils::log;
-use genpdf::{Border, Borders, CustomPageDecorator, Document, Margins};
+use genpdf::{Borders, CustomPageDecorator, Document, Margins};
 
 fn main() -> Result<(), Error> {
     let font_dir = "/Users/bharath/Work/Fonts/".to_string();
@@ -25,17 +25,14 @@ fn main() -> Result<(), Error> {
     let mut d = CustomPageDecorator::new();
 
     let borders = Borders {
-        top: Some(Border {
-            thickness: Some(2.5.into()),
-            color: Some(ORANGE),
-        }),
+        top: Some(LineStyle::default().with_thickness(2.5).with_color(ORANGE)),
         right: None,
         bottom: None,
-        left: None,
+        left: Some(LineStyle::default()),
     };
 
     d.set_borders(Some(borders));
-    d.set_margins(Some(Margins::all(1.5)));
+    d.set_margins(Some(Margins::trbl(1.0, 5.0, 5.0, 5.0)));
     d.register_footer_callback_fn(|_| {
         let mut footer_table = TableLayout::new_with_borders(
             genpdf::elements::ColumnWidths::PixelWidths(vec![90.0, 90.0]),

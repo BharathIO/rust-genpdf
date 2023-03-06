@@ -172,7 +172,6 @@ use derive_more::{
 };
 
 use error::Context as _;
-use style::Color;
 use style::LineStyle;
 use style::Style;
 use utils::log;
@@ -934,32 +933,15 @@ type CustomFooterCallback = Box<dyn Fn(usize) -> Result<Box<dyn Element>, error:
 
 #[derive(Clone, Copy)]
 /// Prepares a page of a document with borders, a header and a footer.
-pub struct Border {
-    /// thickness of the border
-    pub thickness: Option<Mm>,
-    /// color of the border
-    pub color: Option<Color>,
-}
-
-impl From<Mm> for Border {
-    fn from(mm: Mm) -> Border {
-        Border {
-            thickness: Some(mm),
-            color: None,
-        }
-    }
-}
-#[derive(Clone, Copy)]
-/// Prepares a page of a document with borders, a header and a footer.
 pub struct Borders {
     /// The top margin of the area.
-    pub top: Option<Border>,
+    pub top: Option<LineStyle>,
     /// The right margin of the area.
-    pub right: Option<Border>,
+    pub right: Option<LineStyle>,
     /// The bottom margin of the area.
-    pub bottom: Option<Border>,
+    pub bottom: Option<LineStyle>,
     /// The left margin of the area.
-    pub left: Option<Border>,
+    pub left: Option<LineStyle>,
 }
 
 impl Borders {
@@ -1055,16 +1037,13 @@ impl PageDecorator for CustomPageDecorator {
 
             let space_after_border = 3.0;
             // borders.top
-            if let Some(top_borders) = borders.top {
-                let top_thickness = match top_borders.thickness {
-                    Some(thickness) => thickness,
-                    None => Mm::from(0.1),
-                };
+            if let Some(top_line) = borders.top {
+                let top_thickness = top_line.thickness();
                 let line_offset = top_thickness / 2.0;
-                let mut top_line_style = LineStyle::default().with_thickness(top_thickness);
-                if let Some(color) = top_borders.color {
-                    top_line_style = top_line_style.with_color(color);
-                }
+                // let mut top_line_style = LineStyle::default().with_thickness(top_thickness);
+                // if let Some(color) = top_borders.color {
+                //     top_line_style = top_line_style.with_color(color);
+                // }
                 let line_start_x = left;
                 let line_end_x = right;
                 let line_start_y = top + line_offset; // top_thickness + line_offset
@@ -1075,20 +1054,20 @@ impl PageDecorator for CustomPageDecorator {
                     Position::new(line_end_x, line_end_y),
                 ];
                 log("top_points", &format!("{:?}", top_points));
-                area.draw_line(top_points, top_line_style);
+                area.draw_line(top_points, top_line);
                 // add space after border
                 // area.add_margins(Margins::trbl(space_after_border, 0.0, 0.0, 0.0));
                 space_top = space_after_border;
             }
 
             // borders.right
-            if let Some(right_borders) = borders.right {
-                let right_thickness = match right_borders.thickness {
-                    Some(thickness) => thickness,
-                    None => Mm::from(0.1),
-                };
-                let line_offset = right_thickness / 2.0;
-                let right_line_style = LineStyle::default().with_thickness(right_thickness);
+            if let Some(right_line) = borders.right {
+                // let right_thickness = match right_borders.thickness {
+                //     Some(thickness) => thickness,
+                //     None => Mm::from(0.1),
+                // };
+                let line_offset = right_line.thickness() / 2.0;
+                // let right_line_style = LineStyle::default().with_thickness(right_thickness);
                 let line_start_x = right - line_offset;
                 let line_end_x = right - line_offset;
                 let line_start_y = top;
@@ -1103,20 +1082,20 @@ impl PageDecorator for CustomPageDecorator {
                     Position::new(line_end_x, line_end_y),
                 ];
                 log("right_points", &format!("{:?}", right_points));
-                area.draw_line(right_points, right_line_style);
+                area.draw_line(right_points, right_line);
                 // add space after border
                 // area.add_margins(Margins::trbl(0.0, space_after_border, 0.0, 0.0));
                 space_right = space_after_border;
             }
 
             // borders.bottom
-            if let Some(bottom_borders) = borders.bottom {
-                let bottom_thickness = match bottom_borders.thickness {
-                    Some(thickness) => thickness,
-                    None => Mm::from(0.1),
-                };
-                let line_offset = bottom_thickness / 2.0;
-                let bottom_line_style = LineStyle::default().with_thickness(bottom_thickness);
+            if let Some(bottom_line) = borders.bottom {
+                // let bottom_thickness = match bottom_borders.thickness {
+                //     Some(thickness) => thickness,
+                //     None => Mm::from(0.1),
+                // };
+                let line_offset = bottom_line.thickness() / 2.0;
+                // let bottom_line_style = LineStyle::default().with_thickness(bottom_thickness);
                 let line_start_x = left;
                 let line_end_x = right;
                 let line_start_y = bottom - line_offset;
@@ -1131,20 +1110,20 @@ impl PageDecorator for CustomPageDecorator {
                     Position::new(line_end_x, line_end_y),
                 ];
                 log("bottom_points", &format!("{:?}", bottom_points));
-                area.draw_line(bottom_points, bottom_line_style);
+                area.draw_line(bottom_points, bottom_line);
                 // add space after border
                 // area.add_margins(Margins::trbl(0.0, 0.0, space_after_border, 0.0));
                 space_bottom = space_after_border;
             }
 
             // borders.left
-            if let Some(left_borders) = borders.left {
-                let left_thickness = match left_borders.thickness {
-                    Some(thickness) => thickness,
-                    None => Mm::from(0.1),
-                };
-                let line_offset = left_thickness / 2.0;
-                let left_line_style = LineStyle::default().with_thickness(left_thickness);
+            if let Some(left_line) = borders.left {
+                // let left_thickness = match left_borders.thickness {
+                //     Some(thickness) => thickness,
+                //     None => Mm::from(0.1),
+                // };
+                let line_offset = left_line.thickness() / 2.0;
+                // let left_line_style = LineStyle::default().with_thickness(left_thickness);
                 let line_start_x = left + line_offset;
                 let line_end_x = left + line_offset;
                 let line_start_y = top;
@@ -1159,7 +1138,7 @@ impl PageDecorator for CustomPageDecorator {
                     Position::new(line_end_x, line_end_y),
                 ];
                 log("left_points", &format!("{:?}", left_points));
-                area.draw_line(left_points, left_line_style);
+                area.draw_line(left_points, left_line);
                 // add space after border
                 // area.add_margins(Margins::trbl(0.0, 0.0, 0.0, space_after_border));
                 space_left = space_after_border;
