@@ -739,7 +739,7 @@ impl Element for PageBreak {
 /// # Example
 ///
 /// ```
-/// let pb = genpdf::elements::PageBreak::new();
+// let line = genpdf::elements::Line::new();
 /// ```
 #[derive(Clone, Debug)]
 pub struct Line {
