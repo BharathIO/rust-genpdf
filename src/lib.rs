@@ -835,6 +835,8 @@ pub struct RenderResult {
     pub size: Size,
     /// Indicates whether the element contains more content that did not fit in the provided area.
     pub has_more: bool,
+    /// The size of the area that is still available for the element.
+    pub offset: Option<Mm>,
 }
 
 /// Prepares a page of a document.

@@ -51,8 +51,10 @@ use crate::error::{Error, ErrorKind};
 use crate::fonts;
 use crate::render;
 use crate::style;
+use crate::style::Color;
 use crate::style::{LineStyle, Style, StyledString};
 use crate::utils::log;
+use crate::utils::log_msg;
 use crate::wrap;
 use crate::{Alignment, Context, Element, Margins, Mm, Position, RenderResult, Size};
 
@@ -161,11 +163,14 @@ impl LinearLayout {
         while area.size().height > Mm(0.0) && self.render_idx < self.elements.len() {
             let element_result =
                 self.elements[self.render_idx].render(context, area.clone(), style)?;
-            // println!("list item spacing: {}", self.list_item_spacing);
-            area.add_offset(Position::new(
-                0,
-                element_result.size.height + Mm(self.list_item_spacing),
-            ));
+            let mut left_offset = 0;
+            let right_offset = element_result.size.height + Mm(self.list_item_spacing);
+
+            if let Some(el_offset) = element_result.offset {
+                left_offset = el_offset.0 as i32;
+            }
+
+            area.add_offset(Position::new(left_offset, right_offset));
             result.size = result.size.stack_vertical(element_result.size);
             result.size.height += Mm(self.list_item_spacing);
             if element_result.has_more {
@@ -715,8 +720,228 @@ impl Element for PageBreak {
             Ok(RenderResult {
                 size: Size::new(1, 0),
                 has_more: true,
+                offset: None,
             })
         }
+    }
+
+    fn get_probable_height(
+        &mut self,
+        _style: style::Style,
+        _context: &Context,
+        _area: render::Area<'_>,
+    ) -> Mm {
+        Mm::default()
+    }
+}
+
+/// A line.
+///
+/// This element inserts a line.
+///
+/// # Example
+///
+/// ```
+/// let pb = genpdf::elements::PageBreak::new();
+/// ```
+#[derive(Clone, Debug)]
+pub struct Line {
+    thickness: Mm,
+    color: Color,
+    width: Option<Mm>,  // width is only used for horizontal lines
+    height: Option<Mm>, // height is only used for vertical lines
+    orientation: String,
+}
+
+impl Default for Line {
+    fn default() -> Line {
+        Line {
+            thickness: Mm::from(0.1),
+            color: Color::Rgb(0, 0, 0),
+            width: None,
+            height: None,
+            orientation: "horizontal".to_string(),
+        }
+    }
+}
+
+impl Line {
+    /// Creates a new line.
+    pub fn new() -> Line {
+        Line::default()
+    }
+
+    /// Sets the thickness of the line.
+    pub fn with_thickness(mut self, thickness: impl Into<Mm>) -> Line {
+        self.thickness = thickness.into();
+        self
+    }
+
+    /// Sets the color of the line.
+    pub fn with_color(mut self, color: Color) -> Line {
+        self.color = color;
+        self
+    }
+
+    /// Sets the width of the line.
+    pub fn with_width(mut self, width: impl Into<Mm>) -> Line {
+        self.width = Some(width.into());
+        self
+    }
+
+    /// Sets the height of the line.
+    pub fn with_height(mut self, height: impl Into<Mm>) -> Line {
+        self.height = Some(height.into());
+        self
+    }
+
+    /// Sets the orientation of the line.
+    pub fn with_orientation(mut self, orientation: impl Into<String>) -> Line {
+        self.orientation = orientation.into();
+        self
+    }
+
+    /// Returns the line thickness.
+    pub fn thickness(&self) -> Mm {
+        self.thickness
+    }
+
+    /// Returns the line color.
+    pub fn color(&self) -> Color {
+        self.color
+    }
+
+    /// Returns the line width.
+    pub fn width(&self) -> Option<Mm> {
+        self.width
+    }
+
+    /// Returns the line orientation.
+    pub fn orientation(&self) -> &str {
+        self.orientation.as_str()
+    }
+
+    /// Returns the line height.
+    pub fn height(&self) -> Option<Mm> {
+        self.height
+    }
+}
+
+impl Line {
+    fn render_horizontal_line(
+        &mut self,
+        mut area: render::Area<'_>,
+    ) -> Result<RenderResult, Error> {
+        let top_thickness = self.thickness();
+        let line_offset = top_thickness / 2.0;
+        let area_width = area.size().width;
+        let top = Mm::from(0.0);
+        let left = Mm::from(0.0);
+        let right = area_width;
+
+        let line_start_x = left;
+        let line_end_x = right;
+        let line_start_y = top + line_offset; // top_thickness + line_offset
+        let line_end_y = top + line_offset; // top_thickness + line_offset
+
+        let top_points = vec![
+            Position::new(line_start_x, line_start_y),
+            Position::new(line_end_x, line_end_y),
+        ];
+        let top_line = LineStyle::default()
+            .with_thickness(top_thickness)
+            .with_color(self.color());
+        area.draw_line(top_points, top_line);
+
+        let mut result = RenderResult::default();
+        result.size.height = top_thickness;
+        area.add_offset(Position::new(0, result.size.height));
+        Ok(result)
+    }
+
+    fn render_vertical_line(&mut self, area: render::Area<'_>) -> Result<RenderResult, Error> {
+        let left_thickness = self.thickness();
+        let line_offset = left_thickness / 2.0;
+        let area_height = match self.height() {
+            Some(height) => height,
+            None => area.size().height,
+        };
+
+        let top = Mm::from(0.0);
+        let left = Mm::from(0.0);
+        let bottom = area_height;
+        let line_start_x = left + line_offset;
+        let line_end_x = left + line_offset;
+        let line_start_y = top;
+        let line_end_y = bottom;
+
+        let left_points = vec![
+            Position::new(line_start_x, line_start_y),
+            Position::new(line_end_x, line_end_y),
+        ];
+        let left_line = LineStyle::default()
+            .with_thickness(left_thickness)
+            .with_color(self.color());
+        // log("left_points", &format!("{:?}", left_points));
+        area.draw_line(left_points, left_line);
+
+        let mut render_result = RenderResult::default();
+        // render_result.size.height = area_height - top_thickness;
+        render_result.size.width = left_thickness;
+        render_result.offset = Some(left_thickness);
+        Ok(render_result)
+    }
+}
+
+impl Element for Line {
+    fn render(
+        &mut self,
+        _context: &Context,
+        area: render::Area<'_>,
+        _style: Style,
+    ) -> Result<RenderResult, Error> {
+        log_msg(&format!(
+            "Rendering Line: thickness={:?}, color={:?}",
+            self.thickness, self.color
+        ));
+
+        match self.orientation() {
+            "vertical" => self.render_vertical_line(area),
+            _ => self.render_horizontal_line(area),
+        }
+
+        // Draw horizontal line
+        // if self.width.is_some() {
+        //     let top_thickness = self.thickness();
+        //     let line_offset = top_thickness / 2.0;
+        //     let area_width = area.size().width;
+        //     // let area_height = area.size().height;
+
+        //     let top = Mm::from(0.0);
+        //     let left = Mm::from(0.0);
+        //     let right = match self.width {
+        //         Some(width) => width,
+        //         None => area_width,
+        //     };
+
+        //     // let bottom = area_height;
+
+        //     let line_start_x = left;
+        //     let line_end_x = right;
+        //     let line_start_y = top + line_offset; // top_thickness + line_offset
+        //     let line_end_y = top + line_offset; // top_thickness + line_offset
+
+        //     let top_points = vec![
+        //         Position::new(line_start_x, line_start_y),
+        //         Position::new(line_end_x, line_end_y),
+        //     ];
+        //     let top_line = LineStyle::default()
+        //         .with_thickness(top_thickness)
+        //         .with_color(self.color());
+        //     area.draw_line(top_points, top_line);
+        // }
+
+        // Ok(RenderResult::default())
     }
 
     fn get_probable_height(
