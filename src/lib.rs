@@ -175,7 +175,7 @@ use error::Context as _;
 use style::LineStyle;
 use style::Style;
 use utils::log;
-use utils::log_msg;
+// use utils::log_msg;
 
 /// A length measured in millimeters.
 ///
@@ -1016,7 +1016,7 @@ impl PageDecorator for CustomPageDecorator {
         mut area: render::Area<'a>,
         style: Style,
     ) -> Result<render::Area<'a>, error::Error> {
-        log_msg(&format!("decorate_page:: area size: {:?}", area.size()));
+        // log_msg(&format!("decorate_page:: area size: {:?}", area.size()));
         self.page += 1;
         context.page_number = self.page;
         if let Some(margins) = self.margins {
@@ -1179,15 +1179,15 @@ impl PageDecorator for CustomPageDecorator {
 
                     let footer_prob_height =
                         element.get_probable_height(style, context, footer_area.clone());
-                    log_msg(&format!("footer_prob_height: {:?}", footer_prob_height));
+                    // log_msg(&format!("footer_prob_height: {:?}", footer_prob_height));
                     let footer_height = footer_prob_height.into();
                     let y_offset = height - footer_height;
                     footer_area.add_offset(Position::new(0, y_offset - space_bottom.into()));
                     let footer_el_result = element.render(context, footer_area.clone(), style)?;
-                    log_msg(&format!(
-                        "footer_act_height: {:?}",
-                        footer_el_result.size.height
-                    ));
+                    // log_msg(&format!(
+                    //     "footer_act_height: {:?}",
+                    //     footer_el_result.size.height
+                    // ));
                     let footer_size = footer_el_result.size.height - height;
                     let height = footer_area.size().height - footer_size;
                     let mut remaining_area_height = height - footer_height;

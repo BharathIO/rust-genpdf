@@ -54,7 +54,6 @@ use crate::style;
 use crate::style::Color;
 use crate::style::{LineStyle, Style, StyledString};
 use crate::utils::log;
-use crate::utils::log_msg;
 use crate::wrap;
 use crate::{Alignment, Context, Element, Margins, Mm, Position, RenderResult, Size};
 
@@ -165,11 +164,9 @@ impl LinearLayout {
                 self.elements[self.render_idx].render(context, area.clone(), style)?;
             let mut left_offset = 0;
             let right_offset = element_result.size.height + Mm(self.list_item_spacing);
-
             if let Some(el_offset) = element_result.offset {
                 left_offset = el_offset.0 as i32;
             }
-
             area.add_offset(Position::new(left_offset, right_offset));
             result.size = result.size.stack_vertical(element_result.size);
             result.size.height += Mm(self.list_item_spacing);
@@ -900,48 +897,10 @@ impl Element for Line {
         area: render::Area<'_>,
         _style: Style,
     ) -> Result<RenderResult, Error> {
-        log_msg(&format!(
-            "Rendering Line: thickness={:?}, color={:?}",
-            self.thickness, self.color
-        ));
-
         match self.orientation() {
             "vertical" => self.render_vertical_line(area),
             _ => self.render_horizontal_line(area),
         }
-
-        // Draw horizontal line
-        // if self.width.is_some() {
-        //     let top_thickness = self.thickness();
-        //     let line_offset = top_thickness / 2.0;
-        //     let area_width = area.size().width;
-        //     // let area_height = area.size().height;
-
-        //     let top = Mm::from(0.0);
-        //     let left = Mm::from(0.0);
-        //     let right = match self.width {
-        //         Some(width) => width,
-        //         None => area_width,
-        //     };
-
-        //     // let bottom = area_height;
-
-        //     let line_start_x = left;
-        //     let line_end_x = right;
-        //     let line_start_y = top + line_offset; // top_thickness + line_offset
-        //     let line_end_y = top + line_offset; // top_thickness + line_offset
-
-        //     let top_points = vec![
-        //         Position::new(line_start_x, line_start_y),
-        //         Position::new(line_end_x, line_end_y),
-        //     ];
-        //     let top_line = LineStyle::default()
-        //         .with_thickness(top_thickness)
-        //         .with_color(self.color());
-        //     area.draw_line(top_points, top_line);
-        // }
-
-        // Ok(RenderResult::default())
     }
 
     fn get_probable_height(
@@ -950,7 +909,10 @@ impl Element for Line {
         _context: &Context,
         _area: render::Area<'_>,
     ) -> Mm {
-        Mm::default()
+        match self.orientation() {
+            "vertical" => self.height().unwrap_or(_area.size().height),
+            _ => self.thickness(),
+        }
     }
 }
 
