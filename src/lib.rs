@@ -174,7 +174,7 @@ use derive_more::{
 use error::Context as _;
 use style::LineStyle;
 use style::Style;
-use utils::log;
+// use utils::log;
 // use utils::log_msg;
 
 /// A length measured in millimeters.
@@ -1055,7 +1055,7 @@ impl PageDecorator for CustomPageDecorator {
                     Position::new(line_start_x, line_start_y),
                     Position::new(line_end_x, line_end_y),
                 ];
-                log("top_points", &format!("{:?}", top_points));
+                // log("top_points", &format!("{:?}", top_points));
                 area.draw_line(top_points, top_line);
                 // add space after border
                 // area.add_margins(Margins::trbl(space_after_border, 0.0, 0.0, 0.0));
@@ -1083,7 +1083,7 @@ impl PageDecorator for CustomPageDecorator {
                     Position::new(line_start_x, line_start_y),
                     Position::new(line_end_x, line_end_y),
                 ];
-                log("right_points", &format!("{:?}", right_points));
+                // log("right_points", &format!("{:?}", right_points));
                 area.draw_line(right_points, right_line);
                 // add space after border
                 // area.add_margins(Margins::trbl(0.0, space_after_border, 0.0, 0.0));
@@ -1111,7 +1111,7 @@ impl PageDecorator for CustomPageDecorator {
                     Position::new(line_start_x, line_start_y),
                     Position::new(line_end_x, line_end_y),
                 ];
-                log("bottom_points", &format!("{:?}", bottom_points));
+                // log("bottom_points", &format!("{:?}", bottom_points));
                 area.draw_line(bottom_points, bottom_line);
                 // add space after border
                 // area.add_margins(Margins::trbl(0.0, 0.0, space_after_border, 0.0));
@@ -1139,7 +1139,7 @@ impl PageDecorator for CustomPageDecorator {
                     Position::new(line_start_x, line_start_y),
                     Position::new(line_end_x, line_end_y),
                 ];
-                log("left_points", &format!("{:?}", left_points));
+                // log("left_points", &format!("{:?}", left_points));
                 area.draw_line(left_points, left_line);
                 // add space after border
                 // area.add_margins(Margins::trbl(0.0, 0.0, 0.0, space_after_border));

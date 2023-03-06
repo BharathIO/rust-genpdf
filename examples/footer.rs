@@ -32,7 +32,7 @@ fn main() -> Result<(), Error> {
     };
 
     d.set_borders(Some(borders));
-    d.set_margins(Some(Margins::trbl(1.0, 5.0, 5.0, 5.0)));
+    d.set_margins(Some(Margins::trbl(0.0, 5.0, 5.0, 5.0)));
     d.register_footer_callback_fn(|_| {
         let mut footer_table = TableLayout::new_with_borders(
             genpdf::elements::ColumnWidths::PixelWidths(vec![90.0, 90.0]),
