@@ -580,6 +580,7 @@ pub struct Document {
     creation_date: Option<printpdf::OffsetDateTime>,
     modification_date: Option<printpdf::OffsetDateTime>,
     margins: Option<Margins>,
+    borders: Option<Borders>,
     has_header: Option<bool>,
     has_footer: Option<bool>,
 }
@@ -601,6 +602,7 @@ impl Document {
             margins: None,
             has_header: None,
             has_footer: None,
+            borders: None,
         }
     }
 
@@ -683,6 +685,11 @@ impl Document {
         self.margins = Some(margins);
     }
 
+    /// set borders
+    pub fn set_borders(&mut self, borders: Borders) {
+        self.borders = Some(borders);
+    }
+
     //// header
     ///
     pub fn set_has_header(&mut self, has_header: bool) {
@@ -716,6 +723,11 @@ impl Document {
     /// get_margins
     pub fn get_margins(&self) -> Option<Margins> {
         self.margins
+    }
+
+    /// get_borders
+    pub fn get_borders(&self) -> Option<Borders> {
+        self.borders
     }
 
     /// Sets the PDF conformance settings for this document.
@@ -947,8 +959,18 @@ pub struct Borders {
 }
 
 impl Borders {
-    /// Creates a new `Margins` instance with all four margins set to the given value.
+    /// Creates a new `Borders` instance with all four borders set to the given value.
     pub fn all(all: impl Into<Mm>) -> Borders {
+        let all = all.into();
+        Borders {
+            top: Some(all.into()),
+            right: Some(all.into()),
+            bottom: Some(all.into()),
+            left: Some(all.into()),
+        }
+    }
+    /// Creates a new `Borders` instance with all four line styles set to the given value.
+    pub fn all_styled(all: impl Into<LineStyle>) -> Borders {
         let all = all.into();
         Borders {
             top: Some(all.into()),
