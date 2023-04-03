@@ -734,7 +734,7 @@ impl Element for PageBreak {
 
 /// A line.
 ///
-/// This element inserts a line.
+/// This element inserts a line with border and color.
 ///
 /// # Example
 ///
@@ -748,6 +748,7 @@ pub struct Line {
     width: Option<Mm>,  // width is only used for horizontal lines
     height: Option<Mm>, // height is only used for vertical lines
     orientation: String,
+    margins: Option<Margins>,
 }
 
 impl Default for Line {
@@ -758,6 +759,7 @@ impl Default for Line {
             width: None,
             height: None,
             orientation: "horizontal".to_string(),
+            margins: None,
         }
     }
 }
@@ -798,6 +800,22 @@ impl Line {
         self
     }
 
+    /// Sets the margins of the line.
+    pub fn with_margins(mut self, margins: Margins) -> Line {
+        self.margins = Some(margins);
+        self
+    }
+
+    /// is the line horizontal?
+    pub fn is_horizontal(&self) -> bool {
+        self.orientation == "horizontal"
+    }
+
+    /// is the line vertical?
+    pub fn is_vertical(&self) -> bool {
+        self.orientation == "vertical"
+    }
+
     /// Returns the line thickness.
     pub fn thickness(&self) -> Mm {
         self.thickness
@@ -831,7 +849,11 @@ impl Line {
     ) -> Result<RenderResult, Error> {
         let top_thickness = self.thickness();
         let line_offset = top_thickness / 2.0;
-        let area_width = area.size().width;
+        let area_width = match self.width() {
+            Some(width) => width,
+            None => area.size().width,
+        };
+
         let top = Mm::from(0.0);
         let left = Mm::from(0.0);
         let right = area_width;
@@ -885,7 +907,12 @@ impl Line {
         let mut render_result = RenderResult::default();
         // render_result.size.height = area_height - top_thickness;
         render_result.size.width = left_thickness;
-        render_result.offset = Some(left_thickness);
+        let offset = if let Some(margins) = self.margins {
+            margins.left + left_thickness
+        } else {
+            left_thickness
+        };
+        render_result.offset = Some(offset);
         Ok(render_result)
     }
 }
@@ -894,9 +921,13 @@ impl Element for Line {
     fn render(
         &mut self,
         _context: &Context,
-        area: render::Area<'_>,
+        mut area: render::Area<'_>,
         _style: Style,
     ) -> Result<RenderResult, Error> {
+        // margins
+        if let Some(margins) = self.margins {
+            area.add_margins(margins);
+        }
         match self.orientation() {
             "vertical" => self.render_vertical_line(area),
             _ => self.render_horizontal_line(area),
