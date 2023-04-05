@@ -172,7 +172,10 @@ use derive_more::{
 };
 
 use error::Context as _;
+use style::LineStyle;
 use style::Style;
+// use utils::log;
+// use utils::log_msg;
 
 /// A length measured in millimeters.
 ///
@@ -577,6 +580,7 @@ pub struct Document {
     creation_date: Option<printpdf::OffsetDateTime>,
     modification_date: Option<printpdf::OffsetDateTime>,
     margins: Option<Margins>,
+    borders: Option<Borders>,
     has_header: Option<bool>,
     has_footer: Option<bool>,
 }
@@ -598,6 +602,7 @@ impl Document {
             margins: None,
             has_header: None,
             has_footer: None,
+            borders: None,
         }
     }
 
@@ -680,6 +685,11 @@ impl Document {
         self.margins = Some(margins);
     }
 
+    /// set borders
+    pub fn set_borders(&mut self, borders: Borders) {
+        self.borders = Some(borders);
+    }
+
     //// header
     ///
     pub fn set_has_header(&mut self, has_header: bool) {
@@ -713,6 +723,11 @@ impl Document {
     /// get_margins
     pub fn get_margins(&self) -> Option<Margins> {
         self.margins
+    }
+
+    /// get_borders
+    pub fn get_borders(&self) -> Option<Borders> {
+        self.borders
     }
 
     /// Sets the PDF conformance settings for this document.
@@ -832,6 +847,8 @@ pub struct RenderResult {
     pub size: Size,
     /// Indicates whether the element contains more content that did not fit in the provided area.
     pub has_more: bool,
+    /// The size of the area that is still available for the element.
+    pub offset: Option<Mm>,
 }
 
 /// Prepares a page of a document.
@@ -928,12 +945,49 @@ impl PageDecorator for SimplePageDecorator {
 type CustomHeaderCallback = Box<dyn Fn(usize) -> Result<Box<dyn Element>, error::Error>>;
 type CustomFooterCallback = Box<dyn Fn(usize) -> Result<Box<dyn Element>, error::Error>>;
 
+#[derive(Clone, Copy)]
+/// Prepares a page of a document with borders, a header and a footer.
+pub struct Borders {
+    /// The top margin of the area.
+    pub top: Option<LineStyle>,
+    /// The right margin of the area.
+    pub right: Option<LineStyle>,
+    /// The bottom margin of the area.
+    pub bottom: Option<LineStyle>,
+    /// The left margin of the area.
+    pub left: Option<LineStyle>,
+}
+
+impl Borders {
+    /// Creates a new `Borders` instance with all four borders set to the given value.
+    pub fn all(all: impl Into<Mm>) -> Borders {
+        let all = all.into();
+        Borders {
+            top: Some(all.into()),
+            right: Some(all.into()),
+            bottom: Some(all.into()),
+            left: Some(all.into()),
+        }
+    }
+    /// Creates a new `Borders` instance with all four line styles set to the given value.
+    pub fn all_styled(all: impl Into<LineStyle>) -> Borders {
+        let all = all.into();
+        Borders {
+            top: Some(all.into()),
+            right: Some(all.into()),
+            bottom: Some(all.into()),
+            left: Some(all.into()),
+        }
+    }
+}
+
 /// Custom header and footer along with margins.
 pub struct CustomPageDecorator {
     page: usize,
     margins: Option<Margins>,
     header_callback_fn: Option<CustomHeaderCallback>,
     footer_callback_fn: Option<CustomFooterCallback>,
+    borders: Option<Borders>,
 }
 
 impl CustomPageDecorator {
@@ -944,12 +998,18 @@ impl CustomPageDecorator {
             margins: None,
             header_callback_fn: None,
             footer_callback_fn: None,
+            borders: None,
         }
     }
 
     /// set margins
     pub fn set_margins(&mut self, margins: Option<Margins>) {
         self.margins = margins;
+    }
+
+    /// set borders
+    pub fn set_borders(&mut self, borders: Option<Borders>) {
+        self.borders = borders;
     }
 
     /// register header callback
@@ -978,12 +1038,143 @@ impl PageDecorator for CustomPageDecorator {
         mut area: render::Area<'a>,
         style: Style,
     ) -> Result<render::Area<'a>, error::Error> {
+        // log_msg(&format!("decorate_page:: area size: {:?}", area.size()));
         self.page += 1;
         context.page_number = self.page;
         if let Some(margins) = self.margins {
             area.add_margins(margins);
         }
-        // println!("page height: {:?}", area.size().height);
+
+        let mut space_left = 0.0;
+        let mut space_right = 0.0;
+        let mut space_top = 0.0;
+        let mut space_bottom = 0.0;
+
+        if let Some(borders) = self.borders {
+            let area_width = area.size().width;
+            let area_height = area.size().height;
+
+            let top = Mm::from(0.0);
+            let left = Mm::from(0.0);
+            let right = area_width;
+            let bottom = area_height;
+
+            let space_after_border = 3.0;
+            // borders.top
+            if let Some(top_line) = borders.top {
+                let top_thickness = top_line.thickness();
+                let line_offset = top_thickness / 2.0;
+                // let mut top_line_style = LineStyle::default().with_thickness(top_thickness);
+                // if let Some(color) = top_borders.color {
+                //     top_line_style = top_line_style.with_color(color);
+                // }
+                let line_start_x = left;
+                let line_end_x = right;
+                let line_start_y = top + line_offset; // top_thickness + line_offset
+                let line_end_y = top + line_offset; // top_thickness + line_offset
+
+                let top_points = vec![
+                    Position::new(line_start_x, line_start_y),
+                    Position::new(line_end_x, line_end_y),
+                ];
+                // log("top_points", &format!("{:?}", top_points));
+                area.draw_line(top_points, top_line);
+                // add space after border
+                // area.add_margins(Margins::trbl(space_after_border, 0.0, 0.0, 0.0));
+                space_top = space_after_border;
+            }
+
+            // borders.right
+            if let Some(right_line) = borders.right {
+                // let right_thickness = match right_borders.thickness {
+                //     Some(thickness) => thickness,
+                //     None => Mm::from(0.1),
+                // };
+                let line_offset = right_line.thickness() / 2.0;
+                // let right_line_style = LineStyle::default().with_thickness(right_thickness);
+                let line_start_x = right - line_offset;
+                let line_end_x = right - line_offset;
+                let line_start_y = top;
+                let line_end_y = bottom;
+
+                // let right_points = vec![
+                //     Position::new(right - line_offset, top),
+                //     Position::new(right - line_offset, bottom),
+                // ];
+                let right_points = vec![
+                    Position::new(line_start_x, line_start_y),
+                    Position::new(line_end_x, line_end_y),
+                ];
+                // log("right_points", &format!("{:?}", right_points));
+                area.draw_line(right_points, right_line);
+                // add space after border
+                // area.add_margins(Margins::trbl(0.0, space_after_border, 0.0, 0.0));
+                space_right = space_after_border;
+            }
+
+            // borders.bottom
+            if let Some(bottom_line) = borders.bottom {
+                // let bottom_thickness = match bottom_borders.thickness {
+                //     Some(thickness) => thickness,
+                //     None => Mm::from(0.1),
+                // };
+                let line_offset = bottom_line.thickness() / 2.0;
+                // let bottom_line_style = LineStyle::default().with_thickness(bottom_thickness);
+                let line_start_x = left;
+                let line_end_x = right;
+                let line_start_y = bottom - line_offset;
+                let line_end_y = bottom - line_offset;
+
+                // let bottom_points = vec![
+                //     Position::new(left, bottom - line_offset),
+                //     Position::new(right, bottom - line_offset),
+                // ];
+                let bottom_points = vec![
+                    Position::new(line_start_x, line_start_y),
+                    Position::new(line_end_x, line_end_y),
+                ];
+                // log("bottom_points", &format!("{:?}", bottom_points));
+                area.draw_line(bottom_points, bottom_line);
+                // add space after border
+                // area.add_margins(Margins::trbl(0.0, 0.0, space_after_border, 0.0));
+                space_bottom = space_after_border;
+            }
+
+            // borders.left
+            if let Some(left_line) = borders.left {
+                // let left_thickness = match left_borders.thickness {
+                //     Some(thickness) => thickness,
+                //     None => Mm::from(0.1),
+                // };
+                let line_offset = left_line.thickness() / 2.0;
+                // let left_line_style = LineStyle::default().with_thickness(left_thickness);
+                let line_start_x = left + line_offset;
+                let line_end_x = left + line_offset;
+                let line_start_y = top;
+                let line_end_y = bottom;
+
+                // let left_points = vec![
+                //     Position::new(left + line_offset, top),
+                //     Position::new(left + line_offset, bottom),
+                // ];
+                let left_points = vec![
+                    Position::new(line_start_x, line_start_y),
+                    Position::new(line_end_x, line_end_y),
+                ];
+                // log("left_points", &format!("{:?}", left_points));
+                area.draw_line(left_points, left_line);
+                // add space after border
+                // area.add_margins(Margins::trbl(0.0, 0.0, 0.0, space_after_border));
+                space_left = space_after_border;
+            }
+            area.add_margins(Margins::trbl(
+                space_top,
+                space_right,
+                space_bottom,
+                space_left,
+            ));
+        }
+
         // Render Header
         if let Some(cb) = &self.header_callback_fn {
             match cb(self.page) {
@@ -1000,33 +1191,28 @@ impl PageDecorator for CustomPageDecorator {
         if let Some(cb) = &self.footer_callback_fn {
             match cb(self.page) {
                 Ok(mut element) => {
-                    let mut height = footer_area.size().height;
-                    // println!("height: {:?}", height);
-                    let doc_margin_bottom = match self.margins {
-                        Some(margins) => margins.bottom,
-                        None => Mm::from(0),
-                    };
-                    height -= doc_margin_bottom;
+                    let height = footer_area.size().height;
+                    // log_msg(&format!("footer_area height: {:?}", height));
+                    // let doc_margin_bottom = match self.margins {
+                    //     Some(margins) => margins.bottom,
+                    //     None => Mm::from(0),
+                    // };
+                    // height -= doc_margin_bottom;
 
                     let footer_prob_height =
                         element.get_probable_height(style, context, footer_area.clone());
-                    // println!("footer_prob_height: {:?}", footer_prob_height);
+                    // log_msg(&format!("footer_prob_height: {:?}", footer_prob_height));
                     let footer_height = footer_prob_height.into();
-                    // println!("footer_height: {:?}", footer_height);
                     let y_offset = height - footer_height;
-                    // println!("y_offset: {:?}", y_offset);
-                    footer_area.add_offset(Position::new(0, /*  Mm::from(269.4) */ y_offset));
+                    footer_area.add_offset(Position::new(0, y_offset - space_bottom.into()));
                     let footer_el_result = element.render(context, footer_area.clone(), style)?;
-                    // println!(
-                    //     "footer_el_result.size.height: {:?}",
+                    // log_msg(&format!(
+                    //     "footer_act_height: {:?}",
                     //     footer_el_result.size.height
-                    // );
+                    // ));
                     let footer_size = footer_el_result.size.height - height;
-                    // println!("footer_size: {:?}", footer_size);
                     let height = footer_area.size().height - footer_size;
-                    // println!("height: {:?}", height);
                     let mut remaining_area_height = height - footer_height;
-                    // println!("remaining_area_height: {:?}", remaining_area_height);
                     if let Some(mr) = self.margins {
                         remaining_area_height -= mr.top;
                     }

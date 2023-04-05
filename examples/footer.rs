@@ -1,11 +1,11 @@
 use std::iter::FromIterator;
 
-use genpdf::elements::{Paragraph, TableLayout, UnorderedList};
+use genpdf::elements::{Line, Paragraph, TableLayout, UnorderedList};
 use genpdf::error::{Error, ErrorKind};
 use genpdf::fonts::{from_files, FontData, FontFamily};
-use genpdf::style::{self, get_color};
+use genpdf::style::{self, get_color, LineStyle, BLUE, GREEN, ORANGE};
 use genpdf::utils::log;
-use genpdf::{CustomPageDecorator, Document, Margins};
+use genpdf::{Borders, CustomPageDecorator, Document, Margins};
 
 fn main() -> Result<(), Error> {
     let font_dir = "/Users/bharath/Work/Fonts/".to_string();
@@ -18,31 +18,71 @@ fn main() -> Result<(), Error> {
     let mut doc = Document::new(font);
     // doc.add_font_family(chinese_font);
 
-    let mut d = CustomPageDecorator::new();
-    d.set_margins(Some(Margins::all(10.0)));
-    doc.set_page_decorator(d);
     let output_file = "footer.pdf";
 
-    let mut footer_table = TableLayout::new_with_borders(
-        genpdf::elements::ColumnWidths::PixelWidths(vec![95.0, 95.0]),
-        true,
-        true,
-    );
-
-    let mut p = Paragraph::new("1 Footer #{page}");
-    p.set_bold(true);
-    p.set_alignment(genpdf::Alignment::Center);
-
-    let mut p2 = Paragraph::new("2 Footer #{page}");
-    p2.set_bold(true);
-    p2.set_alignment(genpdf::Alignment::Center);
-    footer_table
-        .row()
-        .cell(p, get_color(genpdf::style::ColorName::GREY))
-        .cell(p2, get_color(genpdf::style::ColorName::GREY))
-        .push()?;
-    footer_table.set_margins(Margins::trbl(2.0, 0.0, 0.0, 0.0));
     // doc.push(footer_table);
+
+    let mut d = CustomPageDecorator::new();
+
+    let borders = Borders {
+        top: Some(LineStyle::default().with_thickness(2.5).with_color(ORANGE)),
+        right: None,
+        bottom: None,
+        left: Some(LineStyle::default()),
+    };
+
+    d.set_borders(Some(borders));
+    d.set_margins(Some(Margins::trbl(0.0, 5.0, 5.0, 5.0)));
+    d.register_footer_callback_fn(|_| {
+        let mut footer_table = TableLayout::new_with_borders(
+            genpdf::elements::ColumnWidths::PixelWidths(vec![90.0, 90.0]),
+            true,
+            true,
+        );
+
+        for i in 0..5 {
+            let mut p = Paragraph::new(format!("Footer Row {} Col 1", i + 1));
+            p.set_bold(true);
+            p.set_alignment(genpdf::Alignment::Center);
+
+            let mut p2 = Paragraph::new(format!("Footer Row {} Col 2", i + 1));
+            p2.set_bold(true);
+            p2.set_alignment(genpdf::Alignment::Center);
+            footer_table
+                .row()
+                .cell(p, get_color(genpdf::style::ColorName::GREY))
+                .cell(p2, get_color(genpdf::style::ColorName::GREY))
+                .push()?;
+        }
+        // footer_table.set_margins(Margins::trbl(2.0, 0.0, 0.0, 0.0));
+        Ok(footer_table)
+    });
+    d.register_header_callback_fn(|_| {
+        let mut footer_table = TableLayout::new_with_borders(
+            genpdf::elements::ColumnWidths::PixelWidths(vec![90.0, 90.0]),
+            true,
+            true,
+        );
+
+        for i in 0..3 {
+            let mut p = Paragraph::new(format!("Header Row {} Col 1", i + 1));
+            p.set_bold(true);
+            p.set_alignment(genpdf::Alignment::Center);
+
+            let mut p2 = Paragraph::new(format!("Header Row {} Col 2", i + 1));
+            p2.set_bold(true);
+            p2.set_alignment(genpdf::Alignment::Center);
+            footer_table
+                .row()
+                .cell(p, get_color(genpdf::style::ColorName::GREY))
+                .cell(p2, get_color(genpdf::style::ColorName::GREY))
+                .push()?;
+        }
+        footer_table.set_margins(Margins::trbl(2.0, 0.0, 2.0, 0.0));
+        // footer_table.set_margins(Margins::trbl(2.0, 0.0, 0.0, 0.0));
+        Ok(footer_table)
+    });
+    doc.set_page_decorator(d);
 
     doc.push(genpdf::elements::Break::new(2));
     // create variable with long text
@@ -68,16 +108,29 @@ fn main() -> Result<(), Error> {
     // let img = elements::Image::new("examples/images/cover.jpg");
     // doc.push(img);
 
+    // let bp1 = BulletPoint::new(Paragraph::new("Bullet Point 1"));
+    // let bp2 = BulletPoint::new(Paragraph::new("Bullet Point 2"));
+    // doc.push(bp1);
+    // doc.push(bp2);
+
+    let horizontal_line = Line::new()
+        .with_color(BLUE)
+        .with_thickness(2.0)
+        .with_width(170.0);
+    doc.push(horizontal_line);
+
+    let vertical_line = Line::new()
+        .with_color(GREEN)
+        .with_thickness(2.0)
+        .with_height(40.0)
+        .with_orientation("vertical");
+    doc.push(vertical_line);
+
     let desc = "The employee agrees to work on any public holiday that would otherwise be a working day for them if required. The employee also agrees not to work on any public holiday unless asked to do so. Select one: The employee will be paid reasonable compensation of  for being available to work on public holidays.The employee’s salary includes compensation for being available to work on public holidays. If the employee doesn’t work on a public holiday, they will get a paid day off if a public holiday falls on a day that would otherwise be a working day for them. If the employee works on a public holiday: - They will be paid their relevant daily pay or average daily pay, plus half that amount again for each hour worked (time and a half). - They will also get a paid day off at a later date unless the employee only ever works for the employer on public holidays. The date of this alternative holiday will be agreed between employer and employee. If they cannot agree, the employer can decide and give the employee at least 14 days’ notice.";
 
     let mut desc_para = Paragraph::new(desc);
     desc_para.set_font_size(10);
     doc.push(desc_para);
-
-    // let bp1 = BulletPoint::new(Paragraph::new("Bullet Point 1"));
-    // let bp2 = BulletPoint::new(Paragraph::new("Bullet Point 2"));
-    // doc.push(bp1);
-    // doc.push(bp2);
 
     let mut unordered_list = genpdf::elements::UnorderedList::new();
     unordered_list.push(Paragraph::new("first"));
@@ -105,7 +158,31 @@ fn main() -> Result<(), Error> {
     ordered_list.push_list(sub_list2);
     unordered_list.push_list(ordered_list);
 
-    // doc.push(unordered_list);
+    doc.push(unordered_list);
+
+    // data table
+    let mut data_table = TableLayout::new_with_borders(
+        genpdf::elements::ColumnWidths::PixelWidths(vec![90.0, 90.0]),
+        true,
+        true,
+    );
+    data_table.set_margins(Margins::trbl(2.0, 0.0, 2.0, 0.0));
+
+    for i in 0..30 {
+        let mut p = Paragraph::new(format!("Data Row {} Col 1", i + 1));
+        p.set_bold(true);
+        p.set_alignment(genpdf::Alignment::Center);
+
+        let mut p2 = Paragraph::new(format!("Data Row {} Col 2", i + 1));
+        p2.set_bold(true);
+        p2.set_alignment(genpdf::Alignment::Center);
+        data_table
+            .row()
+            .cell(p, get_color(genpdf::style::ColorName::CYAN))
+            .cell(p2, get_color(genpdf::style::ColorName::PURPLE))
+            .push()?;
+    }
+    doc.push(data_table);
 
     match doc.render_to_file(output_file) {
         Ok(_) => {}

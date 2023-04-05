@@ -124,7 +124,12 @@ pub enum ColorName {
     LIGHTBLUE,
 }
 
-/// get a color from a string
+/// get color using name
+pub fn get_color_by_name(name: &str) -> Option<Color> {
+    get_color(name.into())
+}
+
+/// get a color from ColorName
 pub fn get_color(name: ColorName) -> Option<Color> {
     match name {
         ColorName::RED => Some(RED),
@@ -711,6 +716,15 @@ impl From<Color> for LineStyle {
     fn from(color: Color) -> LineStyle {
         LineStyle {
             color,
+            ..LineStyle::default()
+        }
+    }
+}
+
+impl From<Mm> for LineStyle {
+    fn from(mm: Mm) -> LineStyle {
+        LineStyle {
+            thickness: mm,
             ..LineStyle::default()
         }
     }
