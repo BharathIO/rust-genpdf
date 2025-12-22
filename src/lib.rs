@@ -659,6 +659,16 @@ impl Document {
         self.style.set_line_spacing(line_spacing);
     }
 
+    /// Sets the page offset used when rendering page numbers.
+    ///
+    /// This is useful when generating multiple documents separately and
+    /// merging them later; you can set how many pages came before this
+    /// document so that placeholders like `#{page}` resolve to a
+    /// global page number.
+    pub fn set_page_offset(&mut self, offset: usize) {
+        self.context.page_offset = offset;
+    }
+
     /// Sets the paper size for all pages of this document.
     ///
     /// If this method is not called, the default size [`A4`][] is used.
@@ -776,7 +786,9 @@ impl Document {
     /// The given writer is always wrapped in a buffered writer.  For details on the rendering
     /// process, see the [Rendering Process section of the crate
     /// documentation](index.html#rendering-process).
-    pub fn render(mut self, w: impl io::Write) -> Result<(), error::Error> {
+    ///    
+    /// Returns the number of pages rendered.
+    pub fn render(mut self, w: impl io::Write) -> Result<usize, error::Error> {
         let mut renderer = render::Renderer::new(self.paper_size, &self.title)?;
         if let Some(conformance) = self.conformance {
             renderer = renderer.with_conformance(conformance);
@@ -806,7 +818,10 @@ impl Document {
                 break;
             }
         }
-        renderer.write(w)
+        renderer.write(w)?;
+
+        // Return the page count from the context
+        Ok(self.context.page_number)
     }
 
     /// Renders this document into a PDF file at the given path.
@@ -815,7 +830,9 @@ impl Document {
     ///
     /// For details on the rendering process, see the [Rendering Process section of the crate
     /// documentation](index.html#rendering-process).
-    pub fn render_to_file(self, path: impl AsRef<path::Path>) -> Result<(), error::Error> {
+    ///
+    /// Returns the number of pages rendered.
+    pub fn render_to_file(self, path: impl AsRef<path::Path>) -> Result<usize, error::Error> {
         let path = path.as_ref();
         let file = fs::File::create(path)
             .with_context(|| format!("Could not create file {}", path.display()))?;
@@ -1318,6 +1335,8 @@ pub trait Element {
 pub struct Context {
     /// The page number of the current page.
     pub page_number: usize,
+    /// The number of pages that came before this document. Used for continuous page numbering when merging documents.
+    pub page_offset: usize,
     /// The font cache for this rendering process.
     pub font_cache: fonts::FontCache,
     /// The hyphenator to use for hyphenation.
@@ -1335,6 +1354,7 @@ impl Context {
         Context {
             font_cache,
             page_number: 0,
+            page_offset: 0,
         }
     }
 
@@ -1343,6 +1363,8 @@ impl Context {
         Context {
             font_cache,
             hyphenator: None,
+            page_number: 0,
+            page_offset: 0,
         }
     }
 }

@@ -453,7 +453,7 @@ fn replace_page_number(
         let mut s = words[i].s.clone();
         s = s.replace("\n", "");
         if s.contains(&"#{page}") {
-            let page = context.page_number;
+            let page = context.page_offset + context.page_number;
             s = s.replace(&"#{page}", &page.to_string());
         }
         words_copy[i].s = s.into();
